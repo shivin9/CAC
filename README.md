@@ -1,4 +1,4 @@
-README
+CAC
 ======
 
 CAC is a clustering based framework for classification. The framework proceeds in 2 phases, training and testing as follow:-
