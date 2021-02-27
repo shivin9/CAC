@@ -6,8 +6,8 @@ from sklearn.metrics import classification_report, accuracy_score, f1_score, con
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression, Perceptron
-from sklearn.metrics import classification_report, accuracy_score, f1_score, confusion_matrix, roc_auc_score, roc_curve
 from sklearn import model_selection, metrics
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -27,7 +27,7 @@ cac, get_new_accuracy, score
 
 
 datasets = ["adult", "cic", "creditcard", "diabetes",\
-            "magic", "sepsis", "titanic", "spambase"]
+            "magic", "sepsis", "titanic"]
 
 # alpha, #clusters
 params = {
@@ -41,9 +41,9 @@ params = {
     "titanic": [2,2],
 }
 
-for DATASET in range(1):
-    DATASET = "creditcard" # see folder, *the Titanic dataset is different*
-    print(DATASET)
+for DATASET in datasets:
+    # DATASET = "creditcard" # see folder, *the Titanic dataset is different*
+    print("Testing on Dataset: ", DATASET)
 
     ############ FOR CIC DATASET ############
     if DATASET == "cic":
@@ -83,9 +83,10 @@ for DATASET in range(1):
         alpha = params[DATASET][0]
         n_clusters = params[DATASET][1]
         scores = []
-        print("Results for base LR classifier")
+        print("Results for base classifier")
         for i in range(5):
-            lr = LogisticRegression()
+            # lr = LogisticRegression()
+            lr = RandomForestClassifier(n_estimators=20)
             lr.fit(X_train, y_train)
             preds = lr.predict(X_test)
             pred_proba = lr.predict_proba(X_test)
@@ -96,9 +97,16 @@ for DATASET in range(1):
             beta = -np.infty # do not change this
             clustering = KMeans(n_clusters=n_clusters, random_state=i, max_iter=300)
             # labels = np.random.randint(0, n_clusters, [len(X_train)])
-            cluster_centers, models, alt_labels, errors, seps, loss = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier="LR", verbose=True)
-            print(score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3])
-
+            labels = clustering.fit(X_train).labels_
+            cluster_centers, models, alt_labels, errors, seps, loss = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier="RF", verbose=True)
+            # print(score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3])
+            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
+            print("Initial Clustering Score:")
+            print("F1: ", f1[0], "AUC: ", auc[0])
+            print("\nBest CAC Clustering")
+            idx = np.argmax(f1[1:])
+            print("F1: ", f1[idx+1], "AUC: ", auc[idx+1])
+            print("\n")
 
     elif DATASET == "titanic":
         X_train = pd.read_csv("./data/" + DATASET + "/" + "X_train.csv").to_numpy()
@@ -112,8 +120,9 @@ for DATASET in range(1):
         print("Results for base LR classifier")
         for i in range(5):
             lr = LogisticRegression()
+            lr = RandomForestClassifier(n_estimators=20)
             lr.fit(X_train, y_train)
-            preds = lr.predict(X_test)/
+            preds = lr.predict(X_test)
             pred_proba = lr.predict_proba(X_test)
             print([f1_score(preds, y_test), roc_auc_score(y_test, pred_proba[:,1])])
             print("\n")
@@ -122,8 +131,15 @@ for DATASET in range(1):
             beta = -np.infty # do not change this
             clustering = KMeans(n_clusters=n_clusters, random_state=i, max_iter=300)
             labels = np.random.randint(0, n_clusters, [len(X_train)])
-            cluster_centers, models, alt_labels, errors, seps, loss = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier="LR", verbose=True)
-            print(score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3])
+            cluster_centers, models, alt_labels, errors, seps, loss = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier="RF", verbose=True)
+            # print(score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3])
+            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
+            print("Initial Clustering Score:")
+            print("F1: ", f1[0], "AUC: ", auc[0])
+            print("\nBest CAC Clustering")
+            idx = np.argmax(f1[1:])
+            print("F1: ", f1[idx+1], "AUC: ", auc[idx+1])
+            print("\n")
 
     ###########################################
 
@@ -143,6 +159,7 @@ for DATASET in range(1):
         for train, test in skf.split(X, y):
             i += 1
             lr = LogisticRegression()
+            lr = RandomForestClassifier(n_estimators=20)
             print("Iteration: " + str(i))
             X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
             X_train = scale.fit_transform(X_train)
@@ -153,24 +170,21 @@ for DATASET in range(1):
             print("F1: ", f1_score(preds, y_test), "AUC:", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
 
         print("\nTraining CAC")
-        for a in alpha:
-            loss = np.zeros(10 + 1)
-            X_train, X_test, y_train, y_test = train_test_split(X, y)
-            # for train, test in skf.split(X, y):
+        i = 0
+        for train, test in skf.split(X, y):
+            i += 1
+            print("Stratified k-fold partition ", str(i))
             beta = -np.infty # do not change this
             clustering = KMeans(n_clusters=n_clusters, random_state=0, max_iter=300)
-            # X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
+            X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
             X_train = scale.fit_transform(X_train)
             X_test = scale.fit_transform(X_test)
             labels = clustering.fit(X_train).labels_
-            cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 10, np.ravel(y_train), a, beta, classifier="LR", verbose=True)
-            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, a, flag="old", verbose=True)[1:3]
+            cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier="RF", verbose=True)
+            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
             print("Initial Clustering Score:")
-            # loss += l1
             print("F1: ", f1[0], "AUC: ", auc[0])
-            print("Best CAC Clustering")
+            print("\nBest CAC Clustering")
             idx = np.argmax(f1[1:])
             print("F1: ", f1[idx+1], "AUC: ", auc[idx+1])
             print("\n")
-            # loss /= 5
-            losses.append(l1)
