@@ -1,7 +1,7 @@
 CAC
 ======
 
-CAC is a clustering based framework for classification.
+CAC is a clustering based framework for classification. [Preprint version](https://arxiv.org/abs/2102.11872) on arXiv.
 ![](assets/cac.png)
 
 Training Phase:
