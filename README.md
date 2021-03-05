@@ -1,7 +1,7 @@
 CAC
 ======
 
-CAC is a clustering based framework for classification. [Preprint version](https://arxiv.org/abs/2102.11872) on arXiv.
+CAC is a clustering based framework for classification.
 ![](assets/cac.png)
 
 Training Phase:
@@ -53,3 +53,5 @@ Testing/Evaluation Phase:
 
 ## Output:
 - `test_scores`: An array of arrays containing Accuracy, F1, AUC, Specificity and Sensitivity scores for every iteration. The first value in every array has the performance metric for classifiers trained on the input clusters given by the user.
+
+[Preprint version](https://arxiv.org/abs/2102.11872) on arXiv.
