@@ -3,11 +3,13 @@ from sklearn.datasets import make_classification
 from sklearn.metrics import log_loss
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression, Perceptron
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.metrics import classification_report, accuracy_score, f1_score, confusion_matrix, roc_auc_score, roc_curve
 from sklearn import model_selection, metrics
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from matplotlib import pyplot as plt
 import seaborn as sns
@@ -149,7 +151,7 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
     best = [[], []]
     models = []
     lbls = []
-    errors = np.zeros((total_iteration, k))
+    errors = np.zeros((total_iteration, k, 2))
     centers = np.zeros((k,d))
     positive_centers = np.zeros((k,d))
     negative_centers = np.zeros((k,d))
@@ -247,8 +249,10 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         for idp in range(N):
             pt = data_points[idp]
             cluster_id = labels[idp]
-            errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha*compute_euclidean_distance(positive_centers[cluster_id],\
-                                                negative_centers[cluster_id])
+            # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha*compute_euclidean_distance(positive_centers[cluster_id],\
+                                                # negative_centers[cluster_id])
+            errors[iteration][cluster_id][0] += compute_euclidean_distance(pt, centers[cluster_id])
+            errors[iteration][cluster_id][1] += alpha*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
 
         # Store best clustering
         f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
@@ -259,6 +263,8 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         lbls.append(np.copy(labels))
         seps.append(s)
         loss.append(l)
+        # print("Errors at iteration #", iteration)
+        # print(errors)
     return np.array(best), models, lbls, errors, seps, loss
 
 
@@ -275,7 +281,7 @@ def get_new_accuracy(X, cluster_labels, y, classifier):
         elif classifier == "RF":
             model = RandomForestClassifier(n_estimators=10, random_state=0)
         elif classifier == "SVM":
-            model = SVC(kernel="linear", probability=True, max_iter=1000)
+            model = SVC(kernel="linear", probability=True)
             # model = LinearSVC(max_iter = 1000)
         elif classifier == "Perceptron":
             model = Perceptron()
@@ -284,6 +290,12 @@ def get_new_accuracy(X, cluster_labels, y, classifier):
             model = AdaBoostClassifier(n_estimators = 100)
         elif classifier == "DT":
             model = DecisionTreeClassifier()
+        elif classifier == "LDA":
+            model = LDA()
+        elif classifier == "NB":
+            model = MultinomialNB()
+        elif classifier == "KNN":
+            model = KNeighborsClassifier(n_neighbors=5)
         else:
             model = LogisticRegression(class_weight='balanced', random_state=0, max_iter=1000)
 

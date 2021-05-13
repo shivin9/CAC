@@ -22,7 +22,7 @@ import sys
 import umap
 
 from CAC import specificity, sensitivity, best_threshold, predict_clusters, predict_clusters_cac,\
-predict_clusters_knn, compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new,\
+compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new,\
 cac_lh, get_new_accuracy, score
 
 
