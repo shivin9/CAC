@@ -1,8 +1,7 @@
-import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, accuracy_score, f1_score, confusion_matrix, roc_auc_score, roc_curve
+from sklearn.metrics import normalized_mutual_info_score as nmi
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
@@ -20,6 +19,8 @@ from typing import Tuple
 import pandas as pd
 import numpy as np
 import sys
+import pandas as pd
+import numpy as np
 import umap
 
 from CAC import specificity, sensitivity, best_threshold, predict_clusters, predict_clusters_cac,\
@@ -107,137 +108,91 @@ for DATASET in datasets:
         X_test = Xc.to_numpy()
         y_test = yc.to_numpy()
 
-        alpha = params[DATASET][0]
-        n_clusters = params[DATASET][1]
-        scores = []
-        print("Results for base classifier")
-        for i in range(5):
-            # clf = LogisticRegression()
-            # clf = RandomForestClassifier(n_estimators=20)
-            # clf = SVC(kernel="linear", probability=True)
-            clf = get_classifier(CLASSIFIER)
-            clf.fit(X_train, y_train)
-            preds = clf.predict(X_test)
-            pred_proba = clf.predict_proba(X_test)
-            print([f1_score(preds, y_test), roc_auc_score(y_test, pred_proba[:,1])])
-            print("\n")
-
-        for i in range(5):
-            beta = -np.infty # do not change this
-            clustering = KMeans(n_clusters=n_clusters, random_state=i, max_iter=300)
-            # labels = np.random.randint(0, n_clusters, [len(X_train)])
-            labels = clustering.fit(X_train).labels_
-            cluster_centers, models, alt_labels, errors, seps, loss = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=True)
-            # print(score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3])
-            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
-            print("Initial Clustering Score:")
-            print("F1: ", f1[0], "AUC: ", auc[0])
-            print("\nBest CAC Clustering")
-            idx = np.argmax(f1[1:])
-            print("F1: ", f1[idx+1], "AUC: ", auc[idx+1])
-            print("\n")
-
     elif DATASET == "titanic":
         X_train = pd.read_csv("./data/" + DATASET + "/" + "X_train.csv").to_numpy()
         X_test = pd.read_csv("./data/" + DATASET + "/" + "X_test.csv").to_numpy()
         y_train = pd.read_csv("./data/" + DATASET + "/" + "y_train.csv").to_numpy()
         y_test = pd.read_csv("./data/" + DATASET + "/" + "y_test.csv").to_numpy()
 
-        alpha = params[DATASET][0]
-        n_clusters = params[DATASET][1]
-        scores = []
-        print("Results for base classifier")
-        for i in range(5):
-            # clf = LogisticRegression()
-            # clf = RandomForestClassifier(n_estimators=20)
-            # clf = SVC(kernel="linear", probability=True)
-            clf = get_classifier(CLASSIFIER)
-
-            clf.fit(X_train, y_train)
-            preds = clf.predict(X_test)
-            pred_proba = clf.predict_proba(X_test)
-            print([f1_score(preds, y_test), roc_auc_score(y_test, pred_proba[:,1])])
-            print("\n")
-
-        for i in range(5):
-            beta = -np.infty # do not change this
-            clustering = KMeans(n_clusters=n_clusters, random_state=i, max_iter=300)
-            labels = np.random.randint(0, n_clusters, [len(X_train)])
-            cluster_centers, models, alt_labels, errors, seps, loss = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=True)
-            # print(score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3])
-            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
-            print("Initial Clustering Score:")
-            print("F1: ", f1[0], "AUC: ", auc[0])
-            print("\nBest CAC Clustering")
-            idx = np.argmax(f1[1:])
-            print("F1: ", f1[idx+1], "AUC: ", auc[idx+1])
-            print("\n")
-
-    ###########################################
-
     else:
         X = pd.read_csv("./data/" + DATASET + "/" + "X.csv").to_numpy()
         y = pd.read_csv("./data/" + DATASET + "/" + "y.csv").to_numpy()
-        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
-        i = 0
-        scale = StandardScaler()
-        alpha = params[DATASET][0]
-        n_clusters = params[DATASET][1]
-        base_scores = np.zeros((5, 2))
-        km_scores = np.zeros((5, 2))
-        cac_best_scores = np.zeros((5, 2))
-        cac_term_scores = np.zeros((5, 2))
 
-        print("Training Base classifier")
-
-        for train, test in skf.split(X, y):
-            # clf = LogisticRegression()
-            # clf = RandomForestClassifier(n_estimators=20)
-            # clf = SVC(kernel="linear", probability=True)
-            clf = get_classifier(CLASSIFIER)
-
-            print("Iteration: " + str(i))
-            X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
-            X_train = scale.fit_transform(X_train)
-            X_test = scale.fit_transform(X_test)
-            clf.fit(X_train, y_train.ravel())
-            preds = clf.predict(X_test)
-            pred_proba = clf.predict_proba(X_test)
-            print("F1: ", f1_score(preds, y_test), "AUC:", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
-            base_scores[i][0] = f1_score(preds, y_test)
-            base_scores[i][1] = roc_auc_score(y_test.ravel(), pred_proba[:,1])
-            i += 1
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+    i = 0
+    scale = StandardScaler()
+    base_scores = np.zeros((5, 2))
+    km_scores = np.zeros((5, 2))
+    cac_best_scores = np.zeros((5, 2))
+    cac_term_scores = np.zeros((5, 2))
+    km_scores = np.zeros((5, 2))
+    alpha = params[DATASET][0]
+    n_clusters = params[DATASET][1]
 
 
-        print("5-Fold Base scores", np.mean(base_scores, axis=0))
-        print("\nTraining CAC")
-        i = 0
-        for train, test in skf.split(X, y):
-            print("Stratified k-fold partition ", str(i))
-            beta = -np.infty # do not change this
-            clustering = KMeans(n_clusters=n_clusters, random_state=0, max_iter=300)
-            X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
-            X_train = scale.fit_transform(X_train)
-            X_test = scale.fit_transform(X_test)
-            labels = clustering.fit(X_train).labels_
-            cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=True)
-            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
-            print("Initial Clustering Score:")
-            print("F1: ", f1[0], "AUC: ", auc[0])
-            print("\nBest CAC Clustering")
-            idx = np.argmax(f1[1:])
-            cac_best_scores[i, 0] = f1[idx+1]
-            cac_best_scores[i, 1] = auc[idx+1]
-            print("F1: ", f1[idx+1], "AUC: ", auc[idx+1], " at idx: ", idx+1)
+    print("Training Base classifier")
 
-            idx = -2
-            cac_term_scores[i, 0] = f1[-1]
-            cac_term_scores[i, 1] = auc[-1]
+    for train, test in skf.split(X, y):
+        # clf = LogisticRegression()
+        # clf = RandomForestClassifier(n_estimators=20)
+        # clf = SVC(kernel="linear", probability=True)
+        clf = get_classifier(CLASSIFIER)
 
-            print("F1: ", f1[idx+1], "AUC: ", auc[idx+1], " at idx: -1")
-            print("\n")
-            i += 1
+        print("Iteration: " + str(i))
+        X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
+        X_train = scale.fit_transform(X_train)
+        X_test = scale.fit_transform(X_test)
+        clf.fit(X_train, y_train.ravel())
+        preds = clf.predict(X_test)
+        pred_proba = clf.predict_proba(X_test)
+        print("F1: ", f1_score(preds, y_test), "AUC:", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
+        base_scores[i][0] = f1_score(preds, y_test)
+        base_scores[i][1] = roc_auc_score(y_test.ravel(), pred_proba[:,1])
+        i += 1
 
-        print("5-Fold best CAC scores", np.mean(cac_best_scores, axis=0))
-        print("5-Fold terminal CAC scores", np.mean(cac_term_scores, axis=0))
+    print("\nTraining CAC")
+    i = 0
+    for train, test in skf.split(X, y):
+        print("=============================")
+        print("Stratified k-fold partition ", str(i))
+        beta = -np.infty # do not change this
+        clustering = KMeans(n_clusters=n_clusters, random_state=0, max_iter=300)
+        X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
+        X_train = scale.fit_transform(X_train)
+        X_test = scale.fit_transform(X_test)
+        # labels = clustering.fit(X_train).labels_
+        labels = np.random.randint(0, n_clusters, [len(X_train)])
+        cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 20, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=True)
+        # print("nmi: ", nmi(labels_km, alt_labels[-1]))
+        f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
 
+        print("Best CAC Clustering")
+        idx = np.argmax(f1[1:])
+        cac_best_scores[i, 0] = f1[idx+1]
+        cac_best_scores[i, 1] = auc[idx+1]
+        print("F1: ", f1[idx+1], "AUC: ", auc[idx+1], " at idx: ", idx+1)
+
+        idx = -2
+        cac_term_scores[i, 0] = f1[-1]
+        cac_term_scores[i, 1] = auc[-1]
+
+        print("F1: ", f1[idx+1], "AUC: ", auc[idx+1], " at idx: -1")
+
+        # KMeans clustering models
+        labels = clustering.fit(X_train).labels_
+        cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 0, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=True)
+        f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
+        print("KMeans Clustering Score:")
+        print("F1: ", f1[0], "AUC: ", auc[0])
+        print("=============================\n")
+
+        km_scores[i, 0] = f1[0]
+        km_scores[i, 1] = auc[0]
+
+        i += 1
+
+    print("5-Fold Base scores", np.mean(base_scores, axis=0))
+    print("5-Fold KMeans scores", np.mean(km_scores, axis=0))        
+    print("5-Fold best CAC scores", np.mean(cac_best_scores, axis=0))
+    print("5-Fold terminal CAC scores", np.mean(cac_term_scores, axis=0))
+    print("\n")

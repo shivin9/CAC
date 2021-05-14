@@ -190,6 +190,9 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
     loss.append(l)
 
     for iteration in range(0, total_iteration):
+        # alpha_t = 2*alpha*(iteration*0.1)/(1+iteration*0.1)
+        # alpha_t = alpha*(1-np.exp(-iteration/10))
+        alpha_t = alpha*(1-np.power(0.5, np.floor(iteration/5)))
         cluster_label = []
         for index_point in range(N):
             distance = {}
@@ -206,13 +209,13 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
                     if cluster_id != old_cluster:
                         distance[cluster_id] = calculate_gamma_new(pt, pt_label,\
                                                 centers[cluster_id], positive_centers[cluster_id],\
-                                                negative_centers[cluster_id], cluster_stats[cluster_id], alpha)
+                                                negative_centers[cluster_id], cluster_stats[cluster_id], alpha_t)
                     else:
                         distance[cluster_id] = np.infty
 
                 old_gamma = calculate_gamma_old(pt, pt_label,\
                                                 centers[old_cluster], positive_centers[old_cluster],\
-                                                negative_centers[old_cluster], cluster_stats[old_cluster], alpha)
+                                                negative_centers[old_cluster], cluster_stats[old_cluster], alpha_t)
                 # new update condition
                 new_cluster = min(distance, key=distance.get)
                 new_gamma = distance[new_cluster]
@@ -249,10 +252,10 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         for idp in range(N):
             pt = data_points[idp]
             cluster_id = labels[idp]
-            # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha*compute_euclidean_distance(positive_centers[cluster_id],\
+            # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha_t*compute_euclidean_distance(positive_centers[cluster_id],\
                                                 # negative_centers[cluster_id])
             errors[iteration][cluster_id][0] += compute_euclidean_distance(pt, centers[cluster_id])
-            errors[iteration][cluster_id][1] += alpha*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
+            errors[iteration][cluster_id][1] += alpha_t*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
 
         # Store best clustering
         f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
@@ -263,8 +266,9 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         lbls.append(np.copy(labels))
         seps.append(s)
         loss.append(l)
-        # print("Errors at iteration #", iteration)
-        # print(errors)
+    # print("Errors at iteration #", iteration)
+    # print(errors)
+    # print(np.sum(errors, axis=1)[:,0])
     return np.array(best), models, lbls, errors, seps, loss
 
 
