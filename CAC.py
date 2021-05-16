@@ -190,9 +190,12 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
     loss.append(l)
 
     for iteration in range(0, total_iteration):
-        # alpha_t = 2*alpha*(iteration*0.1)/(1+iteration*0.1)
+        # print("iteration #", iteration-1)
+        # alpha_t = alpha/(1+iteration*0.1)
+        alpha_t = alpha*(iteration*0.1)/(1+iteration*0.1)
         # alpha_t = alpha*(1-np.exp(-iteration/10))
-        alpha_t = alpha*(1-np.power(0.5, np.floor(iteration/5)))
+        # alpha_t = alpha*(1-np.power(0.5, np.floor(iteration/5)))
+        # alpha_t = alpha
         cluster_label = []
         for index_point in range(N):
             distance = {}
@@ -255,7 +258,7 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
             # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha_t*compute_euclidean_distance(positive_centers[cluster_id],\
                                                 # negative_centers[cluster_id])
             errors[iteration][cluster_id][0] += compute_euclidean_distance(pt, centers[cluster_id])
-            errors[iteration][cluster_id][1] += alpha_t*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
+            errors[iteration][cluster_id][1] -= alpha_t*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
 
         # Store best clustering
         f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
@@ -266,6 +269,13 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         lbls.append(np.copy(labels))
         seps.append(s)
         loss.append(l)
+        # print(np.sum(errors[iteration]))
+        # print("***")
+        # print(errors[iteration-1], np.sum(errors[iteration-1]))
+        # if (np.abs(np.sum(errors[iteration]) - np.sum(errors[iteration-1])) < 0.01):
+        if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
+            print("converged at itr: ", iteration)
+            break
     # print("Errors at iteration #", iteration)
     # print(errors)
     # print(np.sum(errors, axis=1)[:,0])
