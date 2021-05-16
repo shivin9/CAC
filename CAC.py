@@ -108,9 +108,20 @@ def calculate_gamma_old(pt, label, mu, mup, mun, cluster_stats, alpha=2):
 
     mu_new = (p_new*mup_new + n_new*mun_new)/(p_new + n_new)
 
-    new_lin_sep = np.sum(np.square(mun_new - mup_new))
-    lin_sep = np.sum(np.square(mun - mup))
-    mu_sep = np.sum(np.square(mu - mu_new))
+    arr1 = np.array([mup_new, mup, mu_new])
+    arr2 = np.array([mun_new, mun, mu])
+    diff = arr1 - arr2
+
+    vals = np.sum(np.square(diff), axis=1)
+
+    # new_lin_sep = np.sum(np.square(mun_new - mup_new))
+    # lin_sep = np.sum(np.square(mun - mup))
+    # mu_sep = np.sum(np.square(mu - mu_new))
+
+    new_lin_sep = vals[0]
+    lin_sep = vals[1]
+    mu_sep = vals[2]
+
     gamma_p = -np.sum(np.square(mu-pt)) - (p+n-1) * mu_sep + (p+n) * alpha*lin_sep - (p+n-1)*alpha*new_lin_sep
     # gamma_p = -np.sum(np.square(mu-pt)) - (p+n-1) * mu_sep + alpha*lin_sep - alpha*new_lin_sep
     return gamma_p
@@ -131,9 +142,18 @@ def calculate_gamma_new(pt, label, mu, mup, mun, cluster_stats, alpha=2):
         n_new = n
 
     mu_new = (p_new*mup_new + n_new*mun_new)/(p_new + n_new)
-    new_lin_sep = np.sum(np.square(mun_new - mup_new))
-    lin_sep = np.sum(np.square(mun - mup))
-    mu_sep = np.sum(np.square(mu - mu_new))
+
+    # new_lin_sep = np.sum(np.square(mun_new - mup_new))
+    # lin_sep = np.sum(np.square(mun - mup))
+    # mu_sep = np.sum(np.square(mu - mu_new))
+    arr1 = np.array([mup_new, mup, mu_new])
+    arr2 = np.array([mun_new, mun, mu])
+    diff = arr1 - arr2
+    vals = np.sum(np.square(diff), axis=1)
+
+    new_lin_sep = vals[0]
+    lin_sep = vals[1]
+    mu_sep = vals[2]
 
     gamma_j = np.sum(np.square(mu_new-pt)) + (p+n)*mu_sep + (p+n) * alpha*lin_sep - (p+n+1)*alpha*new_lin_sep
     # gamma_j = np.sum(np.square(mu_new-pt)) + (p+n)*mu_sep + alpha*lin_sep - alpha*new_lin_sep
@@ -252,13 +272,13 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
                         cluster_stats[new_cluster][0] += 1
                     labels[index_point] = new_cluster
 
-        for idp in range(N):
-            pt = data_points[idp]
-            cluster_id = labels[idp]
-            # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha_t*compute_euclidean_distance(positive_centers[cluster_id],\
-                                                # negative_centers[cluster_id])
-            errors[iteration][cluster_id][0] += compute_euclidean_distance(pt, centers[cluster_id])
-            errors[iteration][cluster_id][1] -= alpha_t*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
+        # for idp in range(N):
+        #     pt = data_points[idp]
+        #     cluster_id = labels[idp]
+        #     # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha_t*compute_euclidean_distance(positive_centers[cluster_id],\
+        #                                         # negative_centers[cluster_id])
+        #     errors[iteration][cluster_id][0] += compute_euclidean_distance(pt, centers[cluster_id])
+        #     errors[iteration][cluster_id][1] -= alpha_t*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
 
         # Store best clustering
         f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)

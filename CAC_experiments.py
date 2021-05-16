@@ -66,7 +66,7 @@ def get_classifier(classifier):
 
 res = pd.DataFrame(columns=['Dataset', 'Classifier', \
     'Base_F1_mean', 'Base_AUC_mean', 'Base_F1_std', 'Base_AUC_std',\
-    'KM_F1_mean', 'KM_AUC_mean', 'KM_F1_std', 'KM_AUC_std', 'KM-p-F1', 'KM-p-AUC'\
+    'KM_F1_mean', 'KM_AUC_mean', 'KM_F1_std', 'KM_AUC_std', 'KM-p-F1', 'KM-p-AUC',\
     'CAC_F1_mean', 'CAC_AUC_mean', 'CAC_F1_std', 'CAC_AUC_std', 'CAC-Base-p-F1', 'CAC-Base-p-AUC', 'CAC-KM-p-F1', 'CAC-KM-p-AUC'])
 
 # alpha, #clusters
@@ -136,14 +136,15 @@ for DATASET in data:
         X = pd.read_csv("./data/" + DATASET + "/" + "X.csv").to_numpy()
         y = pd.read_csv("./data/" + DATASET + "/" + "y.csv").to_numpy()
 
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+    n_splits = 5
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=0)
     i = 0
     scale = StandardScaler()
-    base_scores = np.zeros((5, 2))
-    km_scores = np.zeros((5, 2))
-    cac_best_scores = np.zeros((5, 2))
-    cac_term_scores = np.zeros((5, 2))
-    km_scores = np.zeros((5, 2))
+    base_scores = np.zeros((n_splits, 2))
+    km_scores = np.zeros((n_splits, 2))
+    cac_best_scores = np.zeros((n_splits, 2))
+    cac_term_scores = np.zeros((n_splits, 2))
+    km_scores = np.zeros((n_splits, 2))
     alpha = params[DATASET][0]
     n_clusters = params[DATASET][1]
 
@@ -226,8 +227,9 @@ for DATASET in data:
     print("5-Fold best CAC scores", np.mean(cac_best_scores, axis=0))
     print("5-Fold terminal CAC scores", np.mean(cac_term_scores, axis=0), "p1 = ", [p1_f1, p1_auc], "p2 = ", [p2_f1, p2_auc])
     print("\n")
+    print(res)
     res.loc[res_idx] = [DATASET, CLASSIFIER] + list(np.mean(base_scores, axis=0)) + list(np.std(base_scores, axis=0)) + \
     list(np.mean(km_scores, axis=0)) + list(np.std(km_scores, axis=0)) + [p0_f1, p0_auc] + \
     list(np.mean(cac_term_scores, axis=0)) + list(np.std(cac_term_scores, axis=0)) + [p1_f1, p1_auc] + [p2_f1, p2_auc]
-
-res.to_csv("Results.csv")
+    res_idx += 1
+    res.to_csv("Results.csv")
