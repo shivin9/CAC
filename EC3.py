@@ -433,9 +433,9 @@ def run(X, train, test):
         Fot = copy(Objclass)
         
         while LA.norm(np.array(Fot)-np.array(Fo)) / (N*L) > eps :             #Fo = Fo(t-1)
-    #        global t
-    #        t = t + 1 
-            # # print ("loop run")
+           # global t
+           # t = t + 1 
+            # print ("loop run")
             lhs = np.linalg.inv(2*delta*one + alpha * Dm)                     #GxG
             rhs = alpha * np.matmul(Km.transpose() , Fo) + 2*delta*Yg         #GxL
             Fg =  np.matmul(lhs,rhs)                                          # GxG x GxL = G x L
@@ -488,7 +488,7 @@ def run(X, train, test):
 datasets = ["adult", "cic", "creditcard", "diabetes",\
             "magic", "sepsis", "spambase", "titanic"]
 
-DATASET = "diabetes/" # see folder, *the Titanic dataset is different*
+DATASET = "cic/" # see folder, *the Titanic dataset is different*
 print(DATASET)
 
 ############ FOR CIC DATASET ############
@@ -531,22 +531,31 @@ if DATASET == "cic/":
 
     train = range(len(X_train))
     test = range(len(X_train), len(X))
-    for i in range(5):
+    # for i in range(5):
+    #     run(X, train, test)
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=108)
+    for train, test in skf.split(X, y):
+        print("#### Performing Stratified k-Fold ####")
         run(X, train, test)
 
-elif DATASET == "titanic/":
-    X_train = pd.read_csv("./data/" + DATASET + "X_train.csv", header=None)
-    X_test = pd.read_csv("./data/" + DATASET + "X_test.csv", header=None)
-    y_train = pd.read_csv("./data/" + DATASET + "y_train.csv", header=None)
-    y_test = pd.read_csv("./data/" + DATASET + "y_test.csv", header=None)
 
-    X = pd.concat([X_train, X_test]).to_numpy()
-    y = pd.concat([y_train, y_test]).to_numpy()
+elif DATASET == "titanic/":
+    X_train = pd.read_csv("./data/" + DATASET + "/" + "X_train.csv", header=None).to_numpy()
+    X_test = pd.read_csv("./data/" + DATASET + "/" + "X_test.csv", header=None).to_numpy()
+    y_train = pd.read_csv("./data/" + DATASET + "/" + "y_train.csv", header=None).to_numpy()
+    y_test = pd.read_csv("./data/" + DATASET + "/" + "y_test.csv", header=None).to_numpy()
+
+    X = np.vstack([X_train, X_test])
+    y = np.vstack([y_train, y_test])
 
     train = range(len(X_train))
     test = range(len(X_train), len(X))
 
-    for i in range(5):
+    # for i in range(5):
+    #     run(X, train, test)
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=108)
+    for train, test in skf.split(X, y):
+        print("#### Performing Stratified k-Fold ####")
         run(X, train, test)
 
 ###########################################

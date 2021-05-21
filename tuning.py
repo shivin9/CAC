@@ -15,7 +15,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import MultinomialNB
 from matplotlib import pyplot as plt
-from sklearn.calibration import CalibratedClassifierCV
+from sklearn.model_selection import GridSearchCV
 import seaborn as sns
 from tqdm import tqdm
 from sklearn.cluster import KMeans
@@ -36,7 +36,6 @@ parser.add_argument('--init', default='RAND')
 parser.add_argument('--classifier', default='ALL')
 parser.add_argument('--verbose', default="False")
 parser.add_argument('--decay', default='Fixed')
-parser.add_argument('--testing', default='False')
 parser.add_argument('--alpha')
 parser.add_argument('--k')
 args = parser.parse_args()  
@@ -52,11 +51,7 @@ datasets = ["adult", "cic", "creditcard", "diabetes",\
             "magic", "sepsis", "titanic"]
 
 classifiers = ["LR", "SVM", "LDA", "Perceptron", "RF", "KNN", "SGD", "Ridge"]
-
-test_results = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha',\
-    'Base_F1_mean', 'Base_AUC_mean',\
-    'KM_F1_mean', 'KM_AUC_mean', \
-    'CAC_F1_mean', 'CAC_AUC_mean'], dtype=object)
+# classifiers = ["SGD", "Ridge"]
 
 def get_classifier(classifier):
     if classifier == "LR":
@@ -65,7 +60,7 @@ def get_classifier(classifier):
         model = RandomForestClassifier(n_estimators=10, random_state=0)
     elif classifier == "SVM":
         # model = SVC(kernel="linear", probability=True)
-        model = LinearSVC(max_iter=5000)
+        model = LinearSVC(max_iter=10000)
         model.predict_proba = lambda X: np.array([model.decision_function(X), model.decision_function(X)]).transpose()
     elif classifier == "Perceptron":
         model = Perceptron()
@@ -90,10 +85,14 @@ def get_classifier(classifier):
     return model
 
 res = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha',\
-    'Base_F1_mean', 'Base_AUC_mean', 'Base_F1_std', 'Base_AUC_std',\
-    'KM_F1_mean', 'KM_AUC_mean', 'KM_F1_std', 'KM_AUC_std', 'KM-p-F1', 'KM-p-AUC',\
-    'CAC_F1_mean', 'CAC_AUC_mean', 'CAC_F1_std', 'CAC_AUC_std', 'CAC-Base-p-F1', 'CAC-Base-p-AUC', 'CAC-KM-p-F1', 'CAC-KM-p-AUC'], dtype=object)
+    'Base_F1_mean', 'Base_AUC_mean',\
+    'KM_F1_mean', 'KM_AUC_mean', \
+    'CAC_F1_mean', 'CAC_AUC_mean'], dtype=object)
 
+test_results = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha',\
+    'Base_F1_mean', 'Base_AUC_mean',\
+    'KM_F1_mean', 'KM_AUC_mean', \
+    'CAC_F1_mean', 'CAC_AUC_mean'], dtype=object)
 # alpha, #clusters
 old_params = {
     "adult": [0.05,2],
@@ -122,6 +121,11 @@ if args.dataset == "ALL":
 else:
     data = [args.dataset]
 
+if args.dataset == "ALL":
+    data = datasets
+else:
+    data = [args.dataset]
+
 if args.classifier == "ALL":
     classifier = classifiers
 else:
@@ -129,11 +133,10 @@ else:
 
 res_idx = 0
 test_idx = 0
-
 for CLASSIFIER in classifier:
     for DATASET in data:
         print("Testing on Dataset: ", DATASET)
-        print("Testing with Classifier: ", CLASSIFIER)
+
         ############ FOR CIC DATASET ############
         if DATASET == "cic":
             Xa = pd.read_csv("./data/CIC/cic_set_a.csv")
@@ -187,6 +190,9 @@ for CLASSIFIER in classifier:
             X = pd.read_csv("./data/" + DATASET + "/" + "X.csv").to_numpy()
             y = pd.read_csv("./data/" + DATASET + "/" + "y.csv").to_numpy()
 
+        i = 0
+        scale = StandardScaler()
+
         if args.alpha is not None:
             alpha = float(args.alpha)
         else:
@@ -197,129 +203,137 @@ for CLASSIFIER in classifier:
         else:
             n_clusters = params[DATASET][1]
 
-        clustering = KMeans(n_clusters=n_clusters, random_state=0, max_iter=300)
-        beta = -np.infty # do not change this
-        scale = StandardScaler()
+        print("Training Base classifier")
+        n_splits = 5
 
-        if args.testing == "False":
-            n_splits = 5
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=108)
+        base_scores = np.zeros((n_splits, 2))
+        km_scores = np.zeros((n_splits, 2))
+        cac_best_scores = np.zeros((n_splits, 2))
+        cac_term_scores = np.zeros((n_splits, 2))
+
+        for train, test in skf.split(X, y):
+            clf = get_classifier(CLASSIFIER)
+            # print("Iteration: " + str(i))
+            X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
+            X_train = scale.fit_transform(X_train)
+            X_test = scale.fit_transform(X_test)
+            clf.fit(X_train, y_train.ravel())
+            preds = clf.predict(X_test)
+            pred_proba = clf.predict_proba(X_test)
+            # print("F1: ", f1_score(preds, y_test), "AUC:", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
+            base_scores[i][0] = f1_score(preds, y_test)
+            base_scores[i][1] = roc_auc_score(y_test.ravel(), pred_proba[:,1])
+            i += 1
+
+        print(base_scores[:,0])
+        print("\nTraining CAC")
+        beta = -np.infty # do not change this
+        alphas = np.array([0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1])
+        if DATASET == "diabetes":
+            alphas = np.array([0.5, 0.8, 1, 1.5, 2, 2.25, 2.5, 3])
+        elif DATASET == "creditcard" or DATASET == "adult":
+            alphas = np.array([0.01, 0.02, 0.05, 0.08, 0.1, 0.15])
+        elif DATASET == "sepsis":
+            alphas = np.array([0.005, 0.008, 0.01, 0.015, 0.018, 0.02])
+
+        X1, X_test, y1, y_test = train_test_split(X, y, stratify=y, random_state=108)
+
+        best_alpha = 0
+        best_f1 = 0
+        test_f1_auc = [0, 0, 0, 0, 0, 0]
+
+        for alpha in alphas:
+            test_f1_auc = [0, 0, 0, 0, 0, 0]
+
+            print("alpha = ", alpha)
             skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=108)
-            i = 0
-            base_scores = np.zeros((n_splits, 2))
+
             km_scores = np.zeros((n_splits, 2))
             cac_best_scores = np.zeros((n_splits, 2))
             cac_term_scores = np.zeros((n_splits, 2))
-            km_scores = np.zeros((n_splits, 2))
-
-            print("Training Base classifier")
-
-            for train, test in skf.split(X, y):
-                clf = get_classifier(CLASSIFIER)
-                print("Iteration: " + str(i))
-                X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
-                X_train = scale.fit_transform(X_train)
-                X_test = scale.fit_transform(X_test)
-                clf.fit(X_train, y_train.ravel())
-                preds = clf.predict(X_test)
-                pred_proba = clf.predict_proba(X_test)
-                print("F1: ", f1_score(preds, y_test), "AUC:", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
-                base_scores[i][0] = f1_score(preds, y_test)
-                base_scores[i][1] = roc_auc_score(y_test.ravel(), pred_proba[:,1])
-                i += 1
-
-            print("\nTraining CAC")
             i = 0
 
-            for train, test in skf.split(X, y):
-                print("=============================")
-                print("Stratified k-fold partition ", str(i))
-                X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
+            for train, val in skf.split(X1, y1):
+                # print("=============================")
+                # print("Stratified k-fold partition ", str(i))
+                X_train, X_val, y_train, y_val = X1[train], X1[val], y1[train], y1[val]
                 X_train = scale.fit_transform(X_train)
-                X_test = scale.fit_transform(X_test)
+                X_val = scale.fit_transform(X_val)
 
+                clustering = KMeans(n_clusters=n_clusters, random_state=0, max_iter=300)
                 if INIT == "KM":
                     labels = clustering.fit(X_train).labels_
                 elif INIT == "RAND":
                     labels = np.random.randint(0, n_clusters, [len(X_train)])
 
-                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 15, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-                # print("nmi: ", nmi(labels_km, alt_labels[-1]))
-                f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)[1:3]
+                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 100, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
+                f1, auc = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)[1:3]
                 db = []
+
                 for k in range(len(alt_labels)):
                     db.append(dbs(X_train, alt_labels[k]))
-
-                if VERBOSE:
-                    print("Best CAC Clustering")
-                    idx = np.argmax(f1[1:])
-                    cac_best_scores[i, 0] = f1[idx+1]
-                    cac_best_scores[i, 1] = auc[idx+1]
-                    # print(f1)
-                    print("F1: ", f1[idx+1], "AUC: ", auc[idx+1], "DB: ", db[idx + 1], " at idx: ", idx+1)
 
                 idx = -1
                 cac_term_scores[i, 0] = f1[idx]
                 cac_term_scores[i, 1] = auc[idx]
 
-                print("F1: ", f1[idx], "AUC: ", auc[idx], "DB: ", db[idx], " at idx: ", idx)
+                # print("F1: ", f1[idx], "AUC: ", auc[idx], "DB: ", db[idx], " at idx: ", idx)
 
                 # KMeans clustering models
                 labels = clustering.fit(X_train).labels_
                 cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 0, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-                f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
+                f1, auc = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
 
-                print("KMeans Clustering Score:")
-                print("F1: ", f1[0], "AUC: ", auc[0], "DB: ", dbs(X_train, alt_labels[-1]))
-                print("=============================\n")
+                # print("KMeans Clustering Score:")
+                # print("F1: ", f1[0], "AUC: ", auc[0], "DB: ", dbs(X_train, alt_labels[-1]))
+                # print("=============================\n")
                 km_scores[i, 0] = f1[0]
                 km_scores[i, 1] = auc[0]
                 i += 1
 
-            value, p0_f1 = ttest_ind(km_scores[:,0], base_scores[:,0])
-            value, p0_auc = ttest_ind(km_scores[:,1], base_scores[:,1])
-
-            value, p1_f1 = ttest_ind(cac_term_scores[:,0], base_scores[:,0])
-            value, p1_auc = ttest_ind(cac_term_scores[:,1], base_scores[:,1])
-
-            value, p2_f1 = ttest_ind(cac_term_scores[:,0], km_scores[:,0])
-            value, p2_auc = ttest_ind(cac_term_scores[:,1], km_scores[:,1])
-
-
             print("5-Fold Base scores", np.mean(base_scores, axis=0))
             print("5-Fold KMeans scores", np.mean(km_scores, axis=0))        
-            print("5-Fold best CAC scores", np.mean(cac_best_scores, axis=0))
-            print("5-Fold terminal CAC scores", np.mean(cac_term_scores, axis=0), "p1 = ", [p1_f1, p1_auc], "p2 = ", [p2_f1, p2_auc])
+            # print("5-Fold best CAC scores", np.mean(cac_best_scores, axis=0))
+            print("5-Fold terminal CAC scores", np.mean(cac_term_scores, axis=0))
             print("\n")
-            res.loc[res_idx] = [DATASET, CLASSIFIER, alpha] + list(np.mean(base_scores, axis=0)) + list(np.std(base_scores, axis=0)) + \
-            list(np.mean(km_scores, axis=0)) + list(np.std(km_scores, axis=0)) + [p0_f1, p0_auc] + \
-            list(np.mean(cac_term_scores, axis=0)) + list(np.std(cac_term_scores, axis=0)) + [p1_f1, p1_auc] + [p2_f1, p2_auc]
-            print(res)
-            res_idx += 1
-            res.to_csv("./Results/Results_" + "_" + CLASSIFIER + "_"+ INIT + ".csv")
 
-        elif args.testing == "True":
-            X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=108)
-            X_train = scale.fit_transform(X_train)
+            res.loc[res_idx] = [DATASET, CLASSIFIER, alpha] + list(np.mean(base_scores, axis=0)) + \
+            list(np.mean(km_scores, axis=0)) + \
+            list(np.mean(cac_term_scores, axis=0))
+            res_idx += 1
+
+            X1 = scale.fit_transform(X1)
             X_test = scale.fit_transform(X_test)
 
             if INIT == "KM":
-                labels = clustering.fit(X_train).labels_
+                labels = clustering.fit(X1).labels_
             elif INIT == "RAND":
-                labels = np.random.randint(0, n_clusters, [len(X_train)])
+                labels = np.random.randint(0, n_clusters, [len(X1)])
 
-            cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 100, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
+            cluster_centers, models, alt_labels, errors, seps, l1 = cac(X1, labels, 100, np.ravel(y1), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
             f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)[1:3]
 
             clf = get_classifier(CLASSIFIER)
-            clf.fit(X_train, y_train.ravel())
+            clf.fit(X1, y1.ravel())
             preds = clf.predict(X_test)
             pred_proba = clf.predict_proba(X_test)
 
-            print("Base final test performance: ", "F1: ", f1_score(preds, y_test), "AUC: ", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
+            print("\nBase final test performance: ", "F1: ", f1_score(preds, y_test), "AUC: ", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
             print("KM final test performance: ", "F1: ", f1[0], "AUC: ", auc[0])
             print("CAC final test performance: ", "F1: ", f1[-1], "AUC: ", auc[-1])
+            print("\n")
 
-            test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1[0], auc[0], f1[-1], auc[-1]]
-            test_results.loc[test_idx] = [DATASET, CLASSIFIER, alpha] + test_f1_auc
-            test_idx += 1
-test_results.to_csv("./Results/Test_Results_STATIC_ALPHA" + "_" + CLASSIFIER + "_"+ DATASET + ".csv", index=None)
+            if np.mean(cac_term_scores, axis=0)[0] > best_f1:
+                best_f1 = np.mean(cac_term_scores, axis=0)[0]
+                best_alpha = alpha
+                test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1[0], auc[0], f1[-1], auc[-1]]
+
+        print(DATASET, ": Best alpha = ", best_alpha)
+        test_results.loc[test_idx] = [DATASET, CLASSIFIER, best_alpha] + test_f1_auc
+        print(test_results)
+        test_idx += 1
+    test_results.to_csv("./Results/Tuned_Test_Results_" + CLASSIFIER + "_" + ".csv", index=None)
+
+res.to_csv("./Results/Tuning_every_run" + ".csv", index=None)
+test_results.to_csv("./Results/Tuned_Test_Results" + ".csv", index=None)

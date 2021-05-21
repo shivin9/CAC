@@ -2,7 +2,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.datasets import make_classification
 from sklearn.metrics import log_loss
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression, Perceptron
+from sklearn.linear_model import LogisticRegression, Perceptron, SGDClassifier, RidgeClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.svm import SVC, LinearSVC
@@ -160,7 +160,7 @@ def calculate_gamma_new(pt, label, mu, mup, mun, cluster_stats, alpha=2):
     return gamma_j
 
 
-def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier="LR", verbose=False):
+def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier="LR", decay="fixed", verbose=False):
     label = []
     cluster_label = []
     y = np.array(y)
@@ -211,11 +211,14 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
 
     for iteration in range(0, total_iteration):
         # print("iteration #", iteration-1)
+        if decay == "inv":
+            alpha_t = alpha*(iteration*0.1)/(1+iteration*0.1)
+        elif decay == "fixed":
+            alpha_t = alpha
+        elif decay == "exp":
+            alpha_t = alpha*(1-np.exp(-iteration/10))
         # alpha_t = alpha/(1+iteration*0.1)
-        alpha_t = alpha*(iteration*0.1)/(1+iteration*0.1)
-        # alpha_t = alpha*(1-np.exp(-iteration/10))
         # alpha_t = alpha*(1-np.power(0.5, np.floor(iteration/5)))
-        # alpha_t = alpha
         cluster_label = []
         for index_point in range(N):
             distance = {}
@@ -225,9 +228,9 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
             p, n = cluster_stats[cluster_id][0], cluster_stats[cluster_id][1]
             new_cluster = old_cluster = labels[index_point]
             old_err = np.zeros(k)
+
             # Ensure that degeneracy is not happening
             if ~((p == 1 and pt_label == 1) or (n == 1 and pt_label == 0)):
-                # # print("Considering changing label of point ", index_point)
                 for cluster_id in range(0, k):
                     if cluster_id != old_cluster:
                         distance[cluster_id] = calculate_gamma_new(pt, pt_label,\
@@ -239,6 +242,7 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
                 old_gamma = calculate_gamma_old(pt, pt_label,\
                                                 centers[old_cluster], positive_centers[old_cluster],\
                                                 negative_centers[old_cluster], cluster_stats[old_cluster], alpha_t)
+
                 # new update condition
                 new_cluster = min(distance, key=distance.get)
                 new_gamma = distance[new_cluster]
@@ -281,25 +285,39 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         #     errors[iteration][cluster_id][1] -= alpha_t*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
 
         # Store best clustering
-        f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
-        # if verbose or (best[0][0] < f1 and best[0][1] < roc and (len(np.unique(labels)) == k)):
-        best[0].append(np.array([f1, roc]))
-        best[1].append(np.array([centers, positive_centers, negative_centers]))
-        models.append(m)
-        lbls.append(np.copy(labels))
-        seps.append(s)
-        loss.append(l)
         # print(np.sum(errors[iteration]))
         # print("***")
         # print(errors[iteration-1], np.sum(errors[iteration-1]))
         # if (np.abs(np.sum(errors[iteration]) - np.sum(errors[iteration-1])) < 0.01):
+        # if verbose or (best[0][0] < f1 and best[0][1] < roc and (len(np.unique(labels)) == k)):
+        lbls.append(np.copy(labels))
+        if verbose == True:
+            f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
+            best[0].append(np.array([f1, roc]))
+            best[1].append(np.array([centers, positive_centers, negative_centers]))
+            models.append(m)
+            seps.append(s)
+            loss.append(l)
+
+            if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
+                # print("converged at itr: ", iteration)
+                break
+
         if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-            print("converged at itr: ", iteration)
+            f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
+            best[0].append(np.array([f1, roc]))
+            best[1].append(np.array([centers, positive_centers, negative_centers]))
+            models.append(m)
+            seps.append(s)
+            loss.append(l)
+            # print("converged at itr: ", iteration)
             break
+
+
     # print("Errors at iteration #", iteration)
     # print(errors)
     # print(np.sum(errors, axis=1)[:,0])
-    return np.array(best), models, lbls, errors, seps, loss
+    return np.array(best, dtype=object), models, lbls, errors, seps, loss
 
 
 def get_new_accuracy(X, cluster_labels, y, classifier):
@@ -315,17 +333,23 @@ def get_new_accuracy(X, cluster_labels, y, classifier):
         elif classifier == "RF":
             model = RandomForestClassifier(n_estimators=10, random_state=0)
         elif classifier == "SVM":
-            model = SVC(kernel="linear", probability=True)
-            # model = LinearSVC(max_iter = 1000)
+            model = LinearSVC(max_iter = 10000)
+            model.predict_proba = lambda X: np.array([model.decision_function(X), model.decision_function(X)]).transpose()
         elif classifier == "Perceptron":
             model = Perceptron()
             model.predict_proba = lambda X: np.array([model.decision_function(X), model.decision_function(X)]).transpose()
         elif classifier == "ADB":
-            model = AdaBoostClassifier(n_estimators = 100)
+            model = AdaBoostClassifier(n_estimators = 50)
         elif classifier == "DT":
             model = DecisionTreeClassifier()
         elif classifier == "LDA":
             model = LDA()
+        elif classifier == "SGD":
+            model = SGDClassifier(loss='log')
+            # model.predict_proba = lambda X: np.array([model.decision_function(X), model.decision_function(X)]).transpose()
+        elif classifier == "Ridge":
+            model = RidgeClassifier()
+            model.predict_proba = lambda X: np.array([model.decision_function(X), model.decision_function(X)]).transpose()
         elif classifier == "NB":
             model = MultinomialNB()
         elif classifier == "KNN":
@@ -355,7 +379,7 @@ def get_new_accuracy(X, cluster_labels, y, classifier):
     return metrics.f1_score(y_pred, y_true), metrics.roc_auc_score(y_true, y_proba), models, sum(loss)
 
 
-def score(X_test, y_test, models, clusters, labels, alpha, flag="none", verbose=False):
+def score(X_test, y_test, models, clusters, labels, alpha, classifier="LR", flag="none", verbose=False):
     acc, f1, roc, spe, sen = [0],[0],[0],[0],[0]
     for j in range(len(models)):
         model = models[j]
