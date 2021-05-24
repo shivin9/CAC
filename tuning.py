@@ -21,8 +21,10 @@ from tqdm import tqdm
 from sklearn.cluster import KMeans
 from typing import Tuple
 import pandas as pd
+import itertools
 import numpy as np
 import argparse
+import random
 import umap
 import sys
 
@@ -51,7 +53,7 @@ datasets = ["adult", "cic", "creditcard", "diabetes",\
             "magic", "sepsis", "titanic"]
 
 classifiers = ["LR", "SVM", "LDA", "Perceptron", "RF", "KNN", "SGD", "Ridge"]
-# classifiers = ["SGD", "Ridge"]
+# classifiers = ["RF", "KNN"]
 
 def get_classifier(classifier):
     if classifier == "LR":
@@ -84,12 +86,12 @@ def get_classifier(classifier):
         model = LogisticRegression(class_weight='balanced', random_state=0, max_iter=1000)
     return model
 
-res = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha',\
+res = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha', 'k', \
     'Base_F1_mean', 'Base_AUC_mean',\
     'KM_F1_mean', 'KM_AUC_mean', \
     'CAC_F1_mean', 'CAC_AUC_mean'], dtype=object)
 
-test_results = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha',\
+test_results = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha', 'k', \
     'Base_F1_mean', 'Base_AUC_mean',\
     'KM_F1_mean', 'KM_AUC_mean', \
     'CAC_F1_mean', 'CAC_AUC_mean'], dtype=object)
@@ -136,6 +138,7 @@ test_idx = 0
 for CLASSIFIER in classifier:
     for DATASET in data:
         print("Testing on Dataset: ", DATASET)
+        print("Testing with Classifier: ", CLASSIFIER)
 
         ############ FOR CIC DATASET ############
         if DATASET == "cic":
@@ -229,24 +232,38 @@ for CLASSIFIER in classifier:
         print(base_scores[:,0])
         print("\nTraining CAC")
         beta = -np.infty # do not change this
-        alphas = np.array([0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1])
+        alphas = [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1]
         if DATASET == "diabetes":
-            alphas = np.array([0.5, 0.8, 1, 1.5, 2, 2.25, 2.5, 3])
+            alphas = [1, 2, 2.25, 2.5, 2.75, 3]
         elif DATASET == "creditcard" or DATASET == "adult":
-            alphas = np.array([0.01, 0.02, 0.05, 0.08, 0.1, 0.15])
+            alphas = [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.5]
         elif DATASET == "sepsis":
-            alphas = np.array([0.005, 0.008, 0.01, 0.015, 0.018, 0.02])
+            alphas = [0.005, 0.008, 0.01, 0.015, 0.018, 0.02]
+        elif DATASET == "cic":
+            alphas = [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1]
+        elif DATASET == "titanic":
+            alphas = [0.01, 0.05, 0.08, 0.1, 0.2, 0.5, 0.8, 1]
+
+        param_grid = {
+        'alpha': alphas,
+        # 'k': [2, 3, 4, 5]
+        'k': [2]
+        }
 
         X1, X_test, y1, y_test = train_test_split(X, y, stratify=y, random_state=108)
 
         best_alpha = 0
         best_f1 = 0
         test_f1_auc = [0, 0, 0, 0, 0, 0]
+        keys, values = zip(*param_grid.items())
+        combs = list(itertools.product(*values))
+        # random.shuffle(combs)
 
-        for alpha in alphas:
-            test_f1_auc = [0, 0, 0, 0, 0, 0]
-
-            print("alpha = ", alpha)
+        for v in combs:
+            hyperparameters = dict(zip(keys, v)) 
+            alpha = hyperparameters['alpha']
+            n_clusters = params['DATASET'][1] # Fix number of clusters to previous values
+            print(hyperparameters)
             skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=108)
 
             km_scores = np.zeros((n_splits, 2))
@@ -255,8 +272,6 @@ for CLASSIFIER in classifier:
             i = 0
 
             for train, val in skf.split(X1, y1):
-                # print("=============================")
-                # print("Stratified k-fold partition ", str(i))
                 X_train, X_val, y_train, y_val = X1[train], X1[val], y1[train], y1[val]
                 X_train = scale.fit_transform(X_train)
                 X_val = scale.fit_transform(X_val)
@@ -269,36 +284,24 @@ for CLASSIFIER in classifier:
 
                 cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 100, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
                 f1, auc = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)[1:3]
-                db = []
-
-                for k in range(len(alt_labels)):
-                    db.append(dbs(X_train, alt_labels[k]))
-
                 idx = -1
                 cac_term_scores[i, 0] = f1[idx]
                 cac_term_scores[i, 1] = auc[idx]
-
-                # print("F1: ", f1[idx], "AUC: ", auc[idx], "DB: ", db[idx], " at idx: ", idx)
 
                 # KMeans clustering models
                 labels = clustering.fit(X_train).labels_
                 cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 0, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
                 f1, auc = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
-
-                # print("KMeans Clustering Score:")
-                # print("F1: ", f1[0], "AUC: ", auc[0], "DB: ", dbs(X_train, alt_labels[-1]))
-                # print("=============================\n")
                 km_scores[i, 0] = f1[0]
                 km_scores[i, 1] = auc[0]
                 i += 1
 
             print("5-Fold Base scores", np.mean(base_scores, axis=0))
             print("5-Fold KMeans scores", np.mean(km_scores, axis=0))        
-            # print("5-Fold best CAC scores", np.mean(cac_best_scores, axis=0))
             print("5-Fold terminal CAC scores", np.mean(cac_term_scores, axis=0))
             print("\n")
 
-            res.loc[res_idx] = [DATASET, CLASSIFIER, alpha] + list(np.mean(base_scores, axis=0)) + \
+            res.loc[res_idx] = [DATASET, CLASSIFIER, alpha, n_clusters] + list(np.mean(base_scores, axis=0)) + \
             list(np.mean(km_scores, axis=0)) + \
             list(np.mean(cac_term_scores, axis=0))
             res_idx += 1
@@ -327,13 +330,15 @@ for CLASSIFIER in classifier:
             if np.mean(cac_term_scores, axis=0)[0] > best_f1:
                 best_f1 = np.mean(cac_term_scores, axis=0)[0]
                 best_alpha = alpha
+                best_k = n_clusters
                 test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1[0], auc[0], f1[-1], auc[-1]]
+                # print(test_f1_auc)
 
         print(DATASET, ": Best alpha = ", best_alpha)
-        test_results.loc[test_idx] = [DATASET, CLASSIFIER, best_alpha] + test_f1_auc
+        test_results.loc[test_idx] = [DATASET, CLASSIFIER, best_alpha, best_k] + test_f1_auc
         print(test_results)
         test_idx += 1
-    test_results.to_csv("./Results/Tuned_Test_Results_" + CLASSIFIER + "_" + ".csv", index=None)
+    test_results.to_csv("./Results/Tuned_Test_Results_" + CLASSIFIER + "_" + DATASET + ".csv", index=None)
 
-res.to_csv("./Results/Tuning_every_run" + ".csv", index=None)
-test_results.to_csv("./Results/Tuned_Test_Results" + ".csv", index=None)
+res.to_csv("./Results/Tuning_every_run" + args.classifier + "_" + args.dataset + ".csv", index=None)
+test_results.to_csv("./Results/Tuned_Test_Results" + args.classifier + "_" + args.dataset + ".csv", index=None)
