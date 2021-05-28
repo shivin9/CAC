@@ -60,6 +60,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.cluster import MeanShift
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import AgglomerativeClustering
+import argparse
 
 #==============================================================================
 #                            code starts                             #
@@ -71,9 +72,8 @@ from sklearn.cluster import AgglomerativeClustering
 #==============================================================================
 
 def run(X, train, test):
-    scale = StandardScaler()
     X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
-
+    scale = StandardScaler()
     X_train = scale.fit_transform(X_train)
     X_test = scale.fit_transform(X_test)
 
@@ -484,86 +484,117 @@ def run(X, train, test):
     print("f1 = ", f1)
     print("roc = ", roc)
     print("\n")
+    return f1
 
-datasets = ["adult", "cic", "creditcard", "diabetes",\
-            "magic", "sepsis", "spambase", "titanic"]
+datasets = ["adult", "cic", "creditcard",\
+            "magic", "sepsis", "titanic"]
 
-DATASET = "cic/" # see folder, *the Titanic dataset is different*
-print(DATASET)
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset', default='ALL')
+parser.add_argument('--cv', default='False')
+args = parser.parse_args()  
 
-############ FOR CIC DATASET ############
-if DATASET == "cic/":
-    Xa = pd.read_csv("./data/CIC/cic_set_a.csv")
-    Xb = pd.read_csv("./data/CIC/cic_set_b.csv")
-    Xc = pd.read_csv("./data/CIC/cic_set_c.csv")
-
-    ya = Xa['In-hospital_death']
-    yb = Xb['In-hospital_death']
-    yc = Xc['In-hospital_death']
-
-    Xa = Xa.drop(columns=['recordid', 'Survival', 'In-hospital_death'])
-    Xb = Xb.drop(columns=['recordid', 'Survival', 'In-hospital_death'])
-    Xc = Xc.drop(columns=['recordid', 'Survival', 'In-hospital_death'])
-
-    cols = Xa.columns
-
-    scale = StandardScaler()
-    Xa = scale.fit_transform(Xa)
-    Xb = scale.fit_transform(Xb)
-    Xc = scale.fit_transform(Xc)
-
-    Xa = pd.DataFrame(Xa, columns=cols)
-    Xb = pd.DataFrame(Xb, columns=cols)
-    Xc = pd.DataFrame(Xc, columns=cols)
-
-    Xa = Xa.fillna(0)
-    Xb = Xb.fillna(0)
-    Xc = Xc.fillna(0)
-
-    X_train = pd.concat([Xa, Xb])
-    y_train = pd.concat([ya, yb])
-
-    X_test = Xc
-    y_test = yc
-
-    X = pd.concat([X_train, X_test]).to_numpy()
-    y = pd.concat([y_train, y_test]).to_numpy()
-
-    train = range(len(X_train))
-    test = range(len(X_train), len(X))
-    # for i in range(5):
-    #     run(X, train, test)
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=108)
-    for train, test in skf.split(X, y):
-        print("#### Performing Stratified k-Fold ####")
-        run(X, train, test)
-
-
-elif DATASET == "titanic/":
-    X_train = pd.read_csv("./data/" + DATASET + "/" + "X_train.csv", header=None).to_numpy()
-    X_test = pd.read_csv("./data/" + DATASET + "/" + "X_test.csv", header=None).to_numpy()
-    y_train = pd.read_csv("./data/" + DATASET + "/" + "y_train.csv", header=None).to_numpy()
-    y_test = pd.read_csv("./data/" + DATASET + "/" + "y_test.csv", header=None).to_numpy()
-
-    X = np.vstack([X_train, X_test])
-    y = np.vstack([y_train, y_test])
-
-    train = range(len(X_train))
-    test = range(len(X_train), len(X))
-
-    # for i in range(5):
-    #     run(X, train, test)
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=108)
-    for train, test in skf.split(X, y):
-        print("#### Performing Stratified k-Fold ####")
-        run(X, train, test)
-
-###########################################
-
+if args.dataset == "ALL":
+    data = datasets
 else:
-    X = pd.read_csv("./data/" + DATASET + "X.csv").to_numpy()
-    y = pd.read_csv("./data/" + DATASET + "y.csv").to_numpy()
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
-    for train, test in skf.split(X, y):
-        print("#### Performing Stratified k-Fold ####")
-        run(X, train, test)
+    data = [args.dataset]
+
+# DATASET = "adult" # see folder, *the Titanic dataset is different*
+for DATASET in data:
+    print(DATASET)
+    ############ FOR CIC DATASET ############
+    if DATASET == "cic":
+        Xa = pd.read_csv("./data/cic/cic_set_a.csv")
+        Xb = pd.read_csv("./data/cic/cic_set_b.csv")
+        Xc = pd.read_csv("./data/cic/cic_set_c.csv")
+
+        ya = Xa['In-hospital_death']
+        yb = Xb['In-hospital_death']
+        yc = Xc['In-hospital_death']
+
+        Xa = Xa.drop(columns=['recordid', 'Survival', 'In-hospital_death'])
+        Xb = Xb.drop(columns=['recordid', 'Survival', 'In-hospital_death'])
+        Xc = Xc.drop(columns=['recordid', 'Survival', 'In-hospital_death'])
+
+        cols = Xa.columns
+
+        scale = StandardScaler()
+        Xa = scale.fit_transform(Xa)
+        Xb = scale.fit_transform(Xb)
+        Xc = scale.fit_transform(Xc)
+
+        Xa = pd.DataFrame(Xa, columns=cols)
+        Xb = pd.DataFrame(Xb, columns=cols)
+        Xc = pd.DataFrame(Xc, columns=cols)
+
+        Xa = Xa.fillna(0)
+        Xb = Xb.fillna(0)
+        Xc = Xc.fillna(0)
+
+        X_train = pd.concat([Xa, Xb])
+        y_train = pd.concat([ya, yb])
+
+        X_test = Xc
+        y_test = yc
+
+        X = pd.concat([X_train, X_test]).to_numpy()
+        y = pd.concat([y_train, y_test]).to_numpy()
+
+        train = range(len(X_train))
+        test = range(len(X_train), len(X))
+        # for i in range(5):
+        #     run(X, train, test)
+        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=108)
+        f1 = []
+        if args.cv == "True":
+            for train, test in skf.split(X, y):
+                print("#### Performing Stratified k-Fold ####")
+                f1.append(run(X, train, test))
+            print("Avg. F1: ", np.mean(f1))
+        else:
+            all_indices = range(len(X))
+            train, test = train_test_split(all_indices, stratify=y, random_state=108)
+            print(run(X, train, test))
+
+
+    elif DATASET == "titanic":
+        X_train = pd.read_csv("./data/" + DATASET + "/" + "X_train.csv", header=None).to_numpy()
+        X_test = pd.read_csv("./data/" + DATASET + "/" + "X_test.csv", header=None).to_numpy()
+        y_train = pd.read_csv("./data/" + DATASET + "/" + "y_train.csv", header=None).to_numpy()
+        y_test = pd.read_csv("./data/" + DATASET + "/" + "y_test.csv", header=None).to_numpy()
+
+        X = np.vstack([X_train, X_test])
+        y = np.vstack([y_train, y_test])
+
+        train = range(len(X_train))
+        test = range(len(X_train), len(X))
+        f1 = []
+        # for i in range(5):
+        #     run(X, train, test)
+        if args.cv == "True":
+            skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=108)
+            for train, test in skf.split(X, y):
+                print("#### Performing Stratified k-Fold ####")
+                f1.append(run(X, train, test))
+            print("Avg. F1: ", np.mean(f1))
+        else:
+            all_indices = range(len(X))
+            train, test = train_test_split(all_indices, stratify=y, random_state=108)
+            print(run(X, train, test))
+
+    ###########################################
+
+    else:
+        X = pd.read_csv("./data/" + DATASET + "/" + "X.csv").to_numpy()
+        y = pd.read_csv("./data/" + DATASET + "/" + "y.csv").to_numpy()
+        f1 = []
+        if args.cv == "True":
+            skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=108)
+            for train, test in skf.split(X, y):
+                print("#### Performing Stratified k-Fold ####")
+                f1.append(run(X, train, test))
+            print("Avg. F1: ", np.mean(f1))
+        else:
+            all_indices = range(len(X))
+            train, test = train_test_split(all_indices, stratify=y, random_state=108)
+            print(run(X, train, test))

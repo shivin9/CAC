@@ -29,8 +29,7 @@ import umap
 import sys
 
 from CAC import specificity, sensitivity, best_threshold, predict_clusters, predict_clusters_cac,\
-compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new,\
-cac, get_new_accuracy, score
+compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new, cac, score
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='ALL')
@@ -253,7 +252,7 @@ for CLASSIFIER in classifier:
         X1, X_test, y1, y_test = train_test_split(X, y, stratify=y, random_state=108)
 
         best_alpha = 0
-        best_f1 = 0
+        best_score = 0
         test_f1_auc = [0, 0, 0, 0, 0, 0]
         keys, values = zip(*param_grid.items())
         combs = list(itertools.product(*values))
@@ -262,7 +261,7 @@ for CLASSIFIER in classifier:
         for v in combs:
             hyperparameters = dict(zip(keys, v)) 
             alpha = hyperparameters['alpha']
-            n_clusters = params['DATASET'][1] # Fix number of clusters to previous values
+            n_clusters = params[DATASET][1] # Fix number of clusters to previous values
             print(hyperparameters)
             skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=108)
 
@@ -283,15 +282,12 @@ for CLASSIFIER in classifier:
                     labels = np.random.randint(0, n_clusters, [len(X_train)])
 
                 cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 100, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-                f1, auc = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)[1:3]
+                scores, loss = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
+                f1, auc = scores[1:3]
                 idx = -1
                 cac_term_scores[i, 0] = f1[idx]
                 cac_term_scores[i, 1] = auc[idx]
 
-                # KMeans clustering models
-                labels = clustering.fit(X_train).labels_
-                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 0, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-                f1, auc = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
                 km_scores[i, 0] = f1[0]
                 km_scores[i, 1] = auc[0]
                 i += 1
@@ -315,7 +311,8 @@ for CLASSIFIER in classifier:
                 labels = np.random.randint(0, n_clusters, [len(X1)])
 
             cluster_centers, models, alt_labels, errors, seps, l1 = cac(X1, labels, 100, np.ravel(y1), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)[1:3]
+            scores, loss = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
+            f1, auc = scores[1:3]
 
             clf = get_classifier(CLASSIFIER)
             clf.fit(X1, y1.ravel())
@@ -327,8 +324,9 @@ for CLASSIFIER in classifier:
             print("CAC final test performance: ", "F1: ", f1[-1], "AUC: ", auc[-1])
             print("\n")
 
-            if np.mean(cac_term_scores, axis=0)[0] > best_f1:
-                best_f1 = np.mean(cac_term_scores, axis=0)[0]
+            # Can choose whether it to do it w.r.t F1 or AUC
+            if np.mean(cac_term_scores, axis=0)[1] > best_score:
+                best_score = np.mean(cac_term_scores, axis=0)[1]
                 best_alpha = alpha
                 best_k = n_clusters
                 test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1[0], auc[0], f1[-1], auc[-1]]
@@ -338,7 +336,7 @@ for CLASSIFIER in classifier:
         test_results.loc[test_idx] = [DATASET, CLASSIFIER, best_alpha, best_k] + test_f1_auc
         print(test_results)
         test_idx += 1
-    test_results.to_csv("./Results/Tuned_Test_Results_" + CLASSIFIER + "_" + DATASET + ".csv", index=None)
+    test_results.to_csv("./Results/Tuned_Test_Results" + ".csv", index=None)
 
 res.to_csv("./Results/Tuning_every_run" + args.classifier + "_" + args.dataset + ".csv", index=None)
 test_results.to_csv("./Results/Tuned_Test_Results" + args.classifier + "_" + args.dataset + ".csv", index=None)

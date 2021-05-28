@@ -197,19 +197,30 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         positive_centers[j,:] = p_class.mean(axis=0)
 
     # Initial performance
-    f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
+    f1, roc, m, l = evaluate_cac(data_points, labels, y, classifier)
     best[0].append(np.array([f1, roc]))
     best[1].append(np.array([centers, positive_centers, negative_centers]))
     models.append(m)
     lbls.append(np.copy(labels))
+
     s = 0
     for clstr in range(k):
         sep = compute_euclidean_distance(negative_centers[clstr], positive_centers[clstr])
         s += sep
+
+    iteration = 0
+    for idp in range(N):
+        pt = data_points[idp]
+        cluster_id = labels[idp]
+        # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha_t*compute_euclidean_distance(positive_centers[cluster_id],\
+                                            # negative_centers[cluster_id])
+        errors[iteration][cluster_id][0] += compute_euclidean_distance(pt, centers[cluster_id])
+        errors[iteration][cluster_id][1] -= alpha*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
+
     seps.append(s)
     loss.append(l)
 
-    for iteration in range(0, total_iteration):
+    for iteration in range(1, total_iteration):
         # print("iteration #", iteration-1)
         if decay == "inv":
             alpha_t = alpha*(iteration*0.1)/(1+iteration*0.1)
@@ -217,8 +228,8 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
             alpha_t = alpha
         elif decay == "exp":
             alpha_t = alpha*(1-np.exp(-iteration/10))
-        # alpha_t = alpha/(1+iteration*0.1)
-        # alpha_t = alpha*(1-np.power(0.5, np.floor(iteration/5)))
+
+
         cluster_label = []
         for index_point in range(N):
             distance = {}
@@ -276,13 +287,13 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
                         cluster_stats[new_cluster][0] += 1
                     labels[index_point] = new_cluster
 
-        # for idp in range(N):
-        #     pt = data_points[idp]
-        #     cluster_id = labels[idp]
-        #     # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha_t*compute_euclidean_distance(positive_centers[cluster_id],\
-        #                                         # negative_centers[cluster_id])
-        #     errors[iteration][cluster_id][0] += compute_euclidean_distance(pt, centers[cluster_id])
-        #     errors[iteration][cluster_id][1] -= alpha_t*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
+        for idp in range(N):
+            pt = data_points[idp]
+            cluster_id = labels[idp]
+            # errors[iteration][cluster_id] += compute_euclidean_distance(pt, centers[cluster_id])-alpha_t*compute_euclidean_distance(positive_centers[cluster_id],\
+                                                # negative_centers[cluster_id])
+            errors[iteration][cluster_id][0] += compute_euclidean_distance(pt, centers[cluster_id])
+            errors[iteration][cluster_id][1] -= alpha_t*compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
 
         # Store best clustering
         # print(np.sum(errors[iteration]))
@@ -292,35 +303,31 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         # if verbose or (best[0][0] < f1 and best[0][1] < roc and (len(np.unique(labels)) == k)):
         lbls.append(np.copy(labels))
         if verbose == True:
-            f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
+            f1, roc, m, l = evaluate_cac(data_points, labels, y, classifier)
             best[0].append(np.array([f1, roc]))
             best[1].append(np.array([centers, positive_centers, negative_centers]))
             models.append(m)
-            seps.append(s)
+            seps.append(np.sum(errors, axis=1)[iteration])
             loss.append(l)
-
             if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-                # print("converged at itr: ", iteration)
+                print("converged at itr: ", iteration)
                 break
 
         if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-            f1, roc, m, l = get_new_accuracy(data_points, labels, y, classifier)
+            f1, roc, m, l = evaluate_cac(data_points, labels, y, classifier)
             best[0].append(np.array([f1, roc]))
             best[1].append(np.array([centers, positive_centers, negative_centers]))
             models.append(m)
             seps.append(s)
             loss.append(l)
-            # print("converged at itr: ", iteration)
+            print("converged at itr: ", iteration)
             break
 
 
-    # print("Errors at iteration #", iteration)
-    # print(errors)
-    # print(np.sum(errors, axis=1)[:,0])
-    return np.array(best, dtype=object), models, lbls, errors, seps, loss
+    return np.array(best, dtype=object), models, lbls, errors[:iteration+1], seps, loss
 
 
-def get_new_accuracy(X, cluster_labels, y, classifier):
+def evaluate_cac(X, cluster_labels, y, classifier):
     y_pred = []
     y_true = []
     y_proba = []
@@ -379,14 +386,11 @@ def get_new_accuracy(X, cluster_labels, y, classifier):
     return metrics.f1_score(y_pred, y_true), metrics.roc_auc_score(y_true, y_proba), models, sum(loss)
 
 
-def score(X_test, y_test, models, clusters, labels, alpha, classifier="LR", flag="none", verbose=False):
+def score(X_test, y_test, models, clusters, labels, alpha, classifier="LR", verbose=False):
     acc, f1, roc, spe, sen = [0],[0],[0],[0],[0]
     for j in range(len(models)):
         model = models[j]
-        if flag == "cac":
-            predicted_clusters = predict_clusters_cac(X_test, clusters[j], labels[j], alpha)
-        else:
-            predicted_clusters = predict_clusters(X_test, clusters[j], alpha)
+        predicted_clusters = predict_clusters(X_test, clusters[j], alpha)
         pred = []
         pred_proba = []
         new_y_test = []
@@ -422,4 +426,4 @@ def score(X_test, y_test, models, clusters, labels, alpha, classifier="LR", flag
                 # print("Specificity: " + str(spe[-1]))
                 # print("Sensitivity: " + str(sen[-1]))
                 # print("======\n")
-    return np.array([np.array(acc[1:]), np.array(f1[1:]), np.array(roc[1:]), np.array(spe[1:]), np.array(sen[1:])])
+    return np.array([np.array(acc[1:]), np.array(f1[1:]), np.array(roc[1:]), np.array(spe[1:]), np.array(sen[1:])], dtype=object), log_loss(y_test, pred_proba)

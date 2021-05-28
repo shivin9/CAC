@@ -27,8 +27,7 @@ import umap
 import sys
 
 from CAC import specificity, sensitivity, best_threshold, predict_clusters, predict_clusters_cac,\
-compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new,\
-cac, get_new_accuracy, score
+compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new, cac, score
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='ALL')
@@ -36,7 +35,7 @@ parser.add_argument('--init', default='RAND')
 parser.add_argument('--classifier', default='ALL')
 parser.add_argument('--verbose', default="False")
 parser.add_argument('--decay', default='Fixed')
-parser.add_argument('--testing', default='False')
+parser.add_argument('--cv', default='False')
 parser.add_argument('--alpha')
 parser.add_argument('--k')
 args = parser.parse_args()  
@@ -106,16 +105,73 @@ old_params = {
     "titanic": [100,2],
 }
 
-params = {
-    "adult": [0.05,2],
-    "cic": [0.05,2],
-    "creditcard": [0.02,3],
-    "diabetes": [2,2],
-    "magic": [0.005,2],
-    "sepsis": [0.015,5],
-    "spambase": [1,2],
-    "titanic" : [100, 2],
+n_cluster_params = {
+    "adult": 2,
+    "cic": 2,
+    "creditcard": 3,
+    "diabetes": 2,
+    "magic": 2,
+    "sepsis": 5,
+    "spambase": 2,
+    "titanic": 2,
 }
+
+params = {'LR': {'titanic': 0.8,
+  'magic': 0.01,
+  'creditcard': 0.02,
+  'adult': 0.05,
+  'diabetes': 2.5,
+  'sepsis': 0.005,
+  'cic': 0.05},
+ 'SVM': {'titanic': 0.01,
+  'magic': 0.02,
+  'creditcard': 0.15,
+  'adult': 0.15,
+  'diabetes': 2.5,
+  'sepsis': 0.008,
+  'cic': 0.5},
+ 'LDA': {'titanic': 0.08,
+  'magic': 0.05,
+  'creditcard': 0.02,
+  'adult': 0.15,
+  'diabetes': 2.5,
+  'sepsis': 0.05,
+  'cic': 0.05},
+ 'Perceptron': {'titanic': 0.5,
+  'magic': 0.01,
+  'creditcard': 0.2,
+  'adult': 0.15,
+  'diabetes': 2.5,
+  'sepsis': 0.005,
+  'cic': 0.5},
+ 'RF': {'titanic': 0.05,
+  'magic': 0.02,
+  'creditcard': 0.15,
+  'adult': 0.02,
+  'diabetes': 2.5,
+  'sepsis': 0.01,
+  'cic': 0.5},
+ 'KNN': {'titanic': 0.01,
+  'magic': 0.01,
+  'creditcard': 0.15,
+  'adult': 0.02,
+  'diabetes': 2.5,
+  'sepsis': 0.008,
+  'cic': 0.5},
+ 'SGD': {'titanic': 0.3,
+  'magic': 0.01,
+  'creditcard': 0.08,
+  'adult': 0.15,
+  'diabetes': 2.5,
+  'sepsis': 0.005,
+  'cic': 0.01},
+ 'Ridge': {'titanic': 0.01,
+  'magic': 0.02,
+  'creditcard': 0.15,
+  'adult': 0.15,
+  'diabetes': 2.5,
+  'sepsis': 0.015,
+  'cic': 0.5}}
 
 if args.dataset == "ALL":
     data = datasets
@@ -190,20 +246,20 @@ for CLASSIFIER in classifier:
         if args.alpha is not None:
             alpha = float(args.alpha)
         else:
-            alpha = params[DATASET][0]
+            alpha = params[CLASSIFIER][DATASET]
 
         if args.k is not None:
             n_clusters = int(args.k)
         else:
-            n_clusters = params[DATASET][1]
+            n_clusters = n_cluster_params[DATASET]
 
         clustering = KMeans(n_clusters=n_clusters, random_state=0, max_iter=300)
         beta = -np.infty # do not change this
         scale = StandardScaler()
 
-        if args.testing == "False":
+        if args.cv == "True":
             n_splits = 5
-            skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=108)
+            skf = StratifiedKFold(n_splits=n_splits, shuffle=True)
             i = 0
             base_scores = np.zeros((n_splits, 2))
             km_scores = np.zeros((n_splits, 2))
@@ -242,9 +298,9 @@ for CLASSIFIER in classifier:
                 elif INIT == "RAND":
                     labels = np.random.randint(0, n_clusters, [len(X_train)])
 
-                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 15, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-                # print("nmi: ", nmi(labels_km, alt_labels[-1]))
-                f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)[1:3]
+                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 100, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
+                scores, loss = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
+                f1, auc = scores[1:3]
                 db = []
                 for k in range(len(alt_labels)):
                     db.append(dbs(X_train, alt_labels[k]))
@@ -262,11 +318,6 @@ for CLASSIFIER in classifier:
                 cac_term_scores[i, 1] = auc[idx]
 
                 print("F1: ", f1[idx], "AUC: ", auc[idx], "DB: ", db[idx], " at idx: ", idx)
-
-                # KMeans clustering models
-                labels = clustering.fit(X_train).labels_
-                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 0, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-                f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, flag="old", verbose=True)[1:3]
 
                 print("KMeans Clustering Score:")
                 print("F1: ", f1[0], "AUC: ", auc[0], "DB: ", dbs(X_train, alt_labels[-1]))
@@ -293,11 +344,11 @@ for CLASSIFIER in classifier:
             res.loc[res_idx] = [DATASET, CLASSIFIER, alpha] + list(np.mean(base_scores, axis=0)) + list(np.std(base_scores, axis=0)) + \
             list(np.mean(km_scores, axis=0)) + list(np.std(km_scores, axis=0)) + [p0_f1, p0_auc] + \
             list(np.mean(cac_term_scores, axis=0)) + list(np.std(cac_term_scores, axis=0)) + [p1_f1, p1_auc] + [p2_f1, p2_auc]
-            print(res)
+            # print(res)
             res_idx += 1
-            res.to_csv("./Results/Results_" + "_" + CLASSIFIER + "_"+ INIT + ".csv")
+            res.to_csv("./Results/Results_5CV_" + ".csv")
 
-        elif args.testing == "True":
+        elif args.cv == "False":
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=108)
             X_train = scale.fit_transform(X_train)
             X_test = scale.fit_transform(X_test)
@@ -308,7 +359,8 @@ for CLASSIFIER in classifier:
                 labels = np.random.randint(0, n_clusters, [len(X_train)])
 
             cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 100, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-            f1, auc = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)[1:3]
+            scores, loss = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
+            f1, auc = scores[1:3]
 
             clf = get_classifier(CLASSIFIER)
             clf.fit(X_train, y_train.ravel())
@@ -322,4 +374,4 @@ for CLASSIFIER in classifier:
             test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1[0], auc[0], f1[-1], auc[-1]]
             test_results.loc[test_idx] = [DATASET, CLASSIFIER, alpha] + test_f1_auc
             test_idx += 1
-test_results.to_csv("./Results/Test_Results_STATIC_ALPHA" + "_" + CLASSIFIER + "_"+ DATASET + ".csv", index=None)
+            test_results.to_csv("./Results/Test_Results_STATIC_ALPHA" + ".csv", index=None)
