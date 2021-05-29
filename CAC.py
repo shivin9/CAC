@@ -66,28 +66,6 @@ def predict_clusters(X_test, all_centers, alpha) -> np.array:
     return test_labels
 
 
-def predict_clusters_cac(X_test, all_centers, labels, alpha) -> np.array:
-    if len(all_centers) == 1:
-        centers = all_centers
-    elif len(all_centers) == 3:
-        centers, p_centers, n_centers = all_centers
-
-    K = len(centers)
-    dists = np.zeros(K)
-    test_labels = np.zeros(X_test.shape[0])
-    C = []
-    for i in range(K):
-        C.append(len(np.where(labels == i)[0]))
-
-    for pt in range(X_test.shape[0]):
-        for k in range(K):
-            min_dist = np.square(np.linalg.norm(centers[k] - X_test[pt]))
-            min_dist -= alpha*np.square(np.linalg.norm(p_centers[k] - n_centers[k]))
-            dists[k] = min_dist
-        test_labels[pt] = np.argmin(dists)
-    return test_labels
-
-
 def compute_euclidean_distance(point, centroid):
     # return np.sum((point - centroid)**2)
     return np.sum((point - centroid)**2)
@@ -160,7 +138,13 @@ def calculate_gamma_new(pt, label, mu, mup, mun, cluster_stats, alpha=2):
     return gamma_j
 
 
-def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier="LR", decay="fixed", verbose=False):
+def cac(data_points, y, k, max_epochs, alpha, beta, classifier="LR", decay="fixed", init="KM", verbose=False):
+    if init == "KM":
+        clustering = KMeans(n_clusters=k, random_state=0, max_iter=300)
+        cluster_labels = clustering.fit(X_train).labels_
+    elif init == "RAND":
+        cluster_labels = np.random.randint(0, n_clusters, [len(X_train)])
+
     label = []
     cluster_label = []
     y = np.array(y)
@@ -171,7 +155,7 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
     best = [[], []]
     models = []
     lbls = []
-    errors = np.zeros((total_iteration, k, 2))
+    errors = np.zeros((max_epochs, k, 2))
     centers = np.zeros((k,d))
     positive_centers = np.zeros((k,d))
     negative_centers = np.zeros((k,d))
@@ -179,7 +163,7 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
     seps = []
     loss = []
 
-    # Initializing the mu arrays
+    # initializing the mu arrays
     for j in range(k):
         pts_index = np.where(labels == j)[0]
         cluster_pts = data_points[pts_index]        
@@ -196,7 +180,7 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
         negative_centers[j,:] = n_class.mean(axis=0)
         positive_centers[j,:] = p_class.mean(axis=0)
 
-    # Initial performance
+    # initial performance
     f1, roc, m, l = evaluate_cac(data_points, labels, y, classifier)
     best[0].append(np.array([f1, roc]))
     best[1].append(np.array([centers, positive_centers, negative_centers]))
@@ -220,7 +204,7 @@ def cac(data_points, cluster_labels, total_iteration, y, alpha, beta, classifier
     seps.append(s)
     loss.append(l)
 
-    for iteration in range(1, total_iteration):
+    for iteration in range(1, max_epochs):
         # print("iteration #", iteration-1)
         if decay == "inv":
             alpha_t = alpha*(iteration*0.1)/(1+iteration*0.1)

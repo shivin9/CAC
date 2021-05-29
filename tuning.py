@@ -28,7 +28,7 @@ import random
 import umap
 import sys
 
-from CAC import specificity, sensitivity, best_threshold, predict_clusters, predict_clusters_cac,\
+from CAC import specificity, sensitivity, best_threshold, predict_clusters,\
 compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new, cac, score
 
 parser = argparse.ArgumentParser()
@@ -275,13 +275,7 @@ for CLASSIFIER in classifier:
                 X_train = scale.fit_transform(X_train)
                 X_val = scale.fit_transform(X_val)
 
-                clustering = KMeans(n_clusters=n_clusters, random_state=0, max_iter=300)
-                if INIT == "KM":
-                    labels = clustering.fit(X_train).labels_
-                elif INIT == "RAND":
-                    labels = np.random.randint(0, n_clusters, [len(X_train)])
-
-                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 100, np.ravel(y_train), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
+                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, np.ravel(y_train), n_clusters, 100, alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
                 scores, loss = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
                 f1, auc = scores[1:3]
                 idx = -1
@@ -305,12 +299,7 @@ for CLASSIFIER in classifier:
             X1 = scale.fit_transform(X1)
             X_test = scale.fit_transform(X_test)
 
-            if INIT == "KM":
-                labels = clustering.fit(X1).labels_
-            elif INIT == "RAND":
-                labels = np.random.randint(0, n_clusters, [len(X1)])
-
-            cluster_centers, models, alt_labels, errors, seps, l1 = cac(X1, labels, 100, np.ravel(y1), alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
+            cluster_centers, models, alt_labels, errors, seps, l1 = cac(X1, np.ravel(y1), n_clusters, 100, alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
             scores, loss = score(X_val, np.array(y_val), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
             f1, auc = scores[1:3]
 
