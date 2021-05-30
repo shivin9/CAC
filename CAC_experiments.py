@@ -26,8 +26,7 @@ import argparse
 import umap
 import sys
 
-from CAC import specificity, sensitivity, best_threshold, predict_clusters,\
-compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new, cac, score
+from CAC import CAC
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='ALL')
@@ -292,12 +291,15 @@ for CLASSIFIER in classifier:
                 X_train = scale.fit_transform(X_train)
                 X_test = scale.fit_transform(X_test)
 
-                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, np.ravel(y_train), n_clusters, 100, alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-                scores, loss = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
-                f1, auc = scores[1:3]
+                c = CAC(n_clusters, alpha, classifier=CLASSIFIER)
+                c.fit(X_train, y_train)
+                # cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, np.ravel(y_train), n_clusters, 100, alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
+                y_pred, y_proba = c.predict(X_test, -1)
+                # scores, loss = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
+                f1, auc = f1_score(y_pred, y_test), roc_auc_score(y_test, y_proba)
                 db = []
-                for k in range(len(alt_labels)):
-                    db.append(dbs(X_train, alt_labels[k]))
+                for lbl_idx in range(len(c.labels)):
+                    db.append(dbs(X_train, c.labels[lbl_idx]))
 
                 if VERBOSE:
                     print("Best CAC Clustering")
@@ -307,17 +309,19 @@ for CLASSIFIER in classifier:
                     # print(f1)
                     print("F1: ", f1[idx+1], "AUC: ", auc[idx+1], "DB: ", db[idx + 1], " at idx: ", idx+1)
 
-                idx = -1
-                cac_term_scores[i, 0] = f1[idx]
-                cac_term_scores[i, 1] = auc[idx]
+                cac_term_scores[i, 0] = f1
+                cac_term_scores[i, 1] = auc
 
-                print("F1: ", f1[idx], "AUC: ", auc[idx], "DB: ", db[idx], " at idx: ", idx)
+                print("F1: ", f1, "AUC: ", auc, "DB: ", db[-1], " at idx: ", -1)
+
+                y_pred, y_proba = c.predict(X_test, 0)
+                f1, auc = f1_score(y_pred, y_test), roc_auc_score(y_test, y_proba)
 
                 print("KMeans Clustering Score:")
-                print("F1: ", f1[0], "AUC: ", auc[0], "DB: ", dbs(X_train, alt_labels[-1]))
+                print("F1: ", f1, "AUC: ", auc, "DB: ", db[0])
                 print("=============================\n")
-                km_scores[i, 0] = f1[0]
-                km_scores[i, 1] = auc[0]
+                km_scores[i, 0] = f1
+                km_scores[i, 1] = auc
                 i += 1
 
             value, p0_f1 = ttest_ind(km_scores[:,0], base_scores[:,0])
@@ -349,9 +353,13 @@ for CLASSIFIER in classifier:
             X_test = scale.fit_transform(X_test)
 
             for i in range(5):
-                cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, np.ravel(y_train), n_clusters, 100, alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
-                scores, loss = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, verbose=True)
-                f1, auc = scores[1:3]
+                c = CAC(n_clusters, alpha, classifier=CLASSIFIER)
+                c.fit(X_train, y_train)
+                y_pred, y_proba = c.predict(X_test, -1)
+                f1_cac, auc_cac = f1_score(y_pred, y_test), roc_auc_score(y_test, y_proba)
+
+                y_pred, y_proba = c.predict(X_test, 0)
+                f1_km, auc_km = f1_score(y_pred, y_test), roc_auc_score(y_test, y_proba)
 
                 clf = get_classifier(CLASSIFIER)
                 clf.fit(X_train, y_train.ravel())
@@ -359,10 +367,10 @@ for CLASSIFIER in classifier:
                 pred_proba = clf.predict_proba(X_test)
 
                 print("Base final test performance: ", "F1: ", f1_score(preds, y_test), "AUC: ", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
-                print("KM final test performance: ", "F1: ", f1[0], "AUC: ", auc[0])
-                print("CAC final test performance: ", "F1: ", f1[-1], "AUC: ", auc[-1])
+                print("KM final test performance: ", "F1: ", f1_km, "AUC: ", auc_km)
+                print("CAC final test performance: ", "F1: ", f1_cac, "AUC: ", auc_cac)
 
-                test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1[0], auc[0], f1[-1], auc[-1]]
+                test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1_km, auc_km, f1_cac, auc_cac]
                 test_results.loc[test_idx] = [DATASET, CLASSIFIER, alpha] + test_f1_auc
             test_idx += 1
             test_results.to_csv("./Results/Test_Results_STATIC_ALPHA" + ".csv", index=None)

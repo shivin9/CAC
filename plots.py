@@ -28,9 +28,7 @@ import random
 import umap
 import sys
 
-from CAC import specificity, sensitivity, best_threshold, predict_clusters, predict_clusters_cac,\
-compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new,\
-cac, get_new_accuracy, score
+from CAC import CAC
 
 
 parser = argparse.ArgumentParser()
@@ -122,10 +120,26 @@ def plot(DATASET, n_clusters=2):
 	labels = clustering.fit(X_train).labels_
 
 	for alpha in alphs:
-		cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, labels, 100, np.ravel(y_train), alpha, -np.infty, classifier=CLASSIFIER, verbose=True)
-		train_loss.append(l1)
+		c = CAC(n_clusters, alpha, verbose=True)
+		c.fit(X_train, y_train)
+		train_loss.append(c.classification_loss)
 		scores, loss = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)
 		print("Test loss: ", loss)
 		test_loss.append(loss)
 		test_scores.append(scores[1][-1])
 	return train_loss, test_loss, test_scores
+
+'''
+lines = []
+for c in classifiers: 
+     base, km, cac = "", "", "" 
+     base += c + " & " 
+     km   += "$KM$ + " + c + " & " 
+     cac  += "CAC + "  + c + " & " 
+     for d in datasets: 
+         row = res[(res['Dataset'] == d) & (res['Classifier'] == c)] 
+         base += "{$" + str(row.Base_F1_mean.values[0]) + "$}" + " & " 
+         km   += "{$" + str(row.KM_F1_mean.values[0]) + "$}" + " & " 
+         cac  += "{$" + str(row.CAC_F1_mean.values[0]) + "$}" + " & " 
+     lines.append([base, km, cac])
+'''

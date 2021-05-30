@@ -45,6 +45,7 @@ class CAC(object):
         self.cluster_stats = []
         self.models = []
         self.scores = []
+        self.labels = []
 
         self.clustering_loss = None
         self.classification_loss = []
@@ -209,7 +210,8 @@ class CAC(object):
 
         self.cluster_stats = cluster_stats
         self.clustering_loss = errors[:iteration+1]
-        return None
+        self.labels = lbls
+        return self
 
     def get_base_model(self, classifier):
         if classifier == "LR":
