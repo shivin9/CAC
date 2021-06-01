@@ -18,7 +18,8 @@ from keras import backend
 import matplotlib.pyplot as plt
 
 from CAC import specificity, sensitivity, best_threshold, predict_clusters, predict_clusters_cac,\
-compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new, cac, score
+compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new,\
+cac, get_new_accuracy, score
 
 
 parser = argparse.ArgumentParser()
@@ -33,9 +34,9 @@ parser.add_argument('--cv', default="False")
 args = parser.parse_args()
 
 test_results = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha', 'k', \
-    'Base_F1_mean', 'Base_AUC_mean',\
-    'KM_F1_mean', 'KM_AUC_mean', \
-    'CAC_F1_mean', 'CAC_AUC_mean'], dtype=object)
+    'Base_F1_mean', 'Base_AUC_mean','Base_F1_std', 'Base_AUC_std',\
+    'KM_F1_mean', 'KM_AUC_mean', 'KM_F1_std', 'KM_AUC_std',\
+    'CAC_F1_mean', 'CAC_AUC_mean', 'CAC_F1_std', 'CAC_AUC_std'], dtype=object)
 
 res = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha', 'k', \
     'Base_F1_mean', 'Base_AUC_mean',\
@@ -302,20 +303,31 @@ if args.cv == "False":
     X1 = scale.fit_transform(X1)
     X_test = scale.fit_transform(X_test)
 
-    print("Testing on Test data with alpha = ", alpha)
-    test_f1_auc = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    print("Testing on ", DATASET, " with alpha = ", alpha)
 
-    for _ in range(5):
+    n_runs = 5
+    base_scores = np.zeros((n_runs, 2))
+    km_scores = np.zeros((n_runs, 2))
+    cac_scores = np.zeros((n_runs, 2))
+
+    for i in range(n_runs):
         scores_cac = neural_network(X1, y1, X_test, y_test, n_clusters, 'CAC', alpha)
         scores_base = neural_network(X1, y1, X_test, y_test, 1, 'KMeans', alpha)
         scores_km = neural_network(X1, y1, X_test, y_test, n_clusters, 'KMeans', alpha)
-        test_f1_auc += np.array([scores_base['f1_score'], scores_base['auroc'], scores_km['f1_score'], scores_km['auroc'], scores_cac['f1_score'], scores_cac['auroc']])
+                
+        cac_scores[i, 0] = scores_cac['f1_score']
+        cac_scores[i, 1] = scores_cac['auroc']
+        km_scores[i, 0] = scores_km['f1_score']
+        km_scores[i, 1] = scores_base['auroc']
+        base_scores[i, 0] = scores_base['f1_score']
+        base_scores[i, 1] = scores_base['auroc']
 
-    test_f1_auc /= 5
     print("Base final test performance: ", "F1: ", scores_base['f1_score'], "AUC: ", scores_base['auroc'], alpha)
     print("KM final test performance: ", "F1: ", scores_km['f1_score'], "AUC: ", scores_km['auroc'], alpha)
     print("CAC final test performance: ", "F1: ", scores_cac['f1_score'], "AUC: ", scores_cac['auroc'], alpha)
-    test_results.loc[0] = [DATASET, "DMNN", alpha, n_clusters] + list(test_f1_auc)
+    test_results.loc[0] = [DATASET, "DMNN", alpha, n_clusters] + list(np.mean(base_scores, axis=0)) + list(np.std(base_scores, axis=0)) + \
+            list(np.mean(km_scores, axis=0)) + list(np.std(km_scores, axis=0)) + \
+            list(np.mean(cac_scores, axis=0)) + list(np.std(cac_scores, axis=0))
     print(test_results)
     test_results.to_csv("./Results/Best_alpha_test_" + args.dataset + "" + ".csv", index=None)
 

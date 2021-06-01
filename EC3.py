@@ -552,9 +552,11 @@ for DATASET in data:
                 f1.append(run(X, train, test))
             print("Avg. F1: ", np.mean(f1))
         else:
-            all_indices = range(len(X))
-            train, test = train_test_split(all_indices, stratify=y, random_state=108)
-            print(run(X, train, test))
+            for i in range(5):
+                all_indices = range(len(X))
+                train, test = train_test_split(all_indices, stratify=y, random_state=108)
+                f1.append(run(X, train, test))
+            print("Avg. F1: ", np.mean(f1), "(", np.std(f1), ")")
 
 
     elif DATASET == "titanic":
@@ -576,11 +578,14 @@ for DATASET in data:
             for train, test in skf.split(X, y):
                 print("#### Performing Stratified k-Fold ####")
                 f1.append(run(X, train, test))
-            print("Avg. F1: ", np.mean(f1))
+            print("Avg. F1: ", np.mean(f1), "(", np.std(f1), ")")
         else:
-            all_indices = range(len(X))
-            train, test = train_test_split(all_indices, stratify=y, random_state=108)
-            print(run(X, train, test))
+            for i in range(5):
+                all_indices = range(len(X))
+                train, test = train_test_split(all_indices, stratify=y, random_state=108)
+                f1.append(run(X, train, test))
+            print("Avg. F1: ", np.mean(f1), "(", np.std(f1), ")")
+
 
     ###########################################
 
@@ -595,6 +600,8 @@ for DATASET in data:
                 f1.append(run(X, train, test))
             print("Avg. F1: ", np.mean(f1))
         else:
-            all_indices = range(len(X))
-            train, test = train_test_split(all_indices, stratify=y, random_state=108)
-            print(run(X, train, test))
+            for i in range(5):
+                all_indices = range(len(X))
+                train, test = train_test_split(all_indices, stratify=y, random_state=108)
+                f1.append(run(X, train, test))
+            print("Avg. F1: ", np.mean(f1), "(", np.std(f1), ")")

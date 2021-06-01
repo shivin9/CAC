@@ -55,7 +55,7 @@ class CAC(object):
         y = np.ravel(y)
 
         if self.init == "KM":
-            clustering = KMeans(n_clusters=self.k, random_state=0, max_iter=300)
+            clustering = KMeans(n_clusters=self.k, max_iter=300)
             cluster_labels = clustering.fit(X).labels_
         elif init == "RAND":
             cluster_labels = np.random.randint(0, self.k, [len(X)])
@@ -196,11 +196,11 @@ class CAC(object):
                 self.classification_loss.append(loss)
 
                 if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-                    print("converged at itr: ", iteration)
+                    # print("converged at itr: ", iteration)
                     break
 
             if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-                print("converged at itr: ", iteration)
+                # print("converged at itr: ", iteration)
                 scores, loss, model = self.evaluate_cac(X, y, labels)
                 self.scores.append(scores)
                 self.centers.append(np.array([centers, positive_centers, negative_centers]))
@@ -215,9 +215,9 @@ class CAC(object):
 
     def get_base_model(self, classifier):
         if classifier == "LR":
-            model = LogisticRegression(class_weight='balanced', random_state=0, max_iter=1000)
+            model = LogisticRegression(class_weight='balanced', max_iter=1000)
         elif classifier == "RF":
-            model = RandomForestClassifier(n_estimators=10, random_state=0)
+            model = RandomForestClassifier(n_estimators=10,)
         elif classifier == "SVM":
             model = LinearSVC(max_iter = 10000)
             model.predict_proba = lambda X: np.array([model.decision_function(X), model.decision_function(X)]).transpose()
@@ -241,7 +241,7 @@ class CAC(object):
         elif classifier == "KNN":
             model = KNeighborsClassifier(n_neighbors=5)
         else:
-            model = LogisticRegression(class_weight='balanced', random_state=0, max_iter=1000)
+            model = LogisticRegression(class_weight='balanced', max_iter=1000)
         return model
 
     def evaluate_cac(self, X, y, cluster_labels):
@@ -360,8 +360,15 @@ class CAC(object):
 
         mu_new = (p_new*mup_new + n_new*mun_new)/(p_new + n_new)
 
+        r = 1 - p/(p+n)
+        r_new = 1 - p_new/(p_new + n_new)
+
         arr1 = np.array([mup_new, mup, mu_new])
         arr2 = np.array([mun_new, mun, mu])
+
+        # arr1 = np.array([r_new*mup_new, r*mup, mu_new])
+        # arr2 = np.array([(1-r_new)*mun_new, (1-r)*mun, mu])
+
         diff = arr1 - arr2
 
         vals = np.sum(np.square(diff), axis=1)
@@ -398,6 +405,9 @@ class CAC(object):
         # new_lin_sep = np.sum(np.square(mun_new - mup_new))
         # lin_sep = np.sum(np.square(mun - mup))
         # mu_sep = np.sum(np.square(mu - mu_new))
+        r = 1 - p/(p+n)
+        r_new = 1 - p_new/(p_new + n_new)
+
         arr1 = np.array([mup_new, mup, mu_new])
         arr2 = np.array([mun_new, mun, mu])
         diff = arr1 - arr2

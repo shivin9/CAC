@@ -17,6 +17,7 @@ from sklearn.naive_bayes import MultinomialNB
 from matplotlib import pyplot as plt
 from sklearn.calibration import CalibratedClassifierCV
 import seaborn as sns
+from datetime import datetime
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 from typing import Tuple
@@ -39,6 +40,9 @@ parser.add_argument('--alpha')
 parser.add_argument('--k')
 args = parser.parse_args()  
 
+now = datetime.now()
+time = now.strftime("%H:%M:%S")
+
 CLASSIFIER = args.classifier
 INIT = args.init
 if args.verbose == "True":
@@ -47,20 +51,20 @@ else:
     VERBOSE = False
 
 datasets = ["adult", "cic", "creditcard", "diabetes",\
-            "magic", "sepsis", "titanic"]
+            "magic", "titanic"]
 
 classifiers = ["LR", "SVM", "LDA", "Perceptron", "RF", "KNN", "SGD", "Ridge"]
 
 test_results = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha',\
-    'Base_F1_mean', 'Base_AUC_mean',\
-    'KM_F1_mean', 'KM_AUC_mean', \
-    'CAC_F1_mean', 'CAC_AUC_mean'], dtype=object)
+    'Base_F1_mean', 'Base_AUC_mean', 'Base_F1_std', 'Base_AUC_std',\
+    'KM_F1_mean', 'KM_AUC_mean', 'KM_F1_std', 'KM_AUC_std',\
+    'CAC_F1_mean', 'CAC_AUC_mean', 'CAC_F1_std', 'CAC_AUC_std'], dtype=object)
 
 def get_classifier(classifier):
     if classifier == "LR":
         model = LogisticRegression(random_state=0, max_iter=1000)
     elif classifier == "RF":
-        model = RandomForestClassifier(n_estimators=10, random_state=0)
+        model = RandomForestClassifier(n_estimators=10)
     elif classifier == "SVM":
         # model = SVC(kernel="linear", probability=True)
         model = LinearSVC(max_iter=5000)
@@ -84,7 +88,7 @@ def get_classifier(classifier):
     elif classifier == "KNN":
         model = KNeighborsClassifier(n_neighbors=5)
     else:
-        model = LogisticRegression(class_weight='balanced', random_state=0, max_iter=1000)
+        model = LogisticRegression(class_weight='balanced', max_iter=1000)
     return model
 
 res = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha',\
@@ -263,7 +267,6 @@ for CLASSIFIER in classifier:
             km_scores = np.zeros((n_splits, 2))
             cac_best_scores = np.zeros((n_splits, 2))
             cac_term_scores = np.zeros((n_splits, 2))
-            km_scores = np.zeros((n_splits, 2))
 
             print("Training Base classifier")
 
@@ -345,32 +348,46 @@ for CLASSIFIER in classifier:
             list(np.mean(cac_term_scores, axis=0)) + list(np.std(cac_term_scores, axis=0)) + [p1_f1, p1_auc] + [p2_f1, p2_auc]
 
             res_idx += 1
-            res.to_csv("./Results/Results_5CV_" + ".csv")
+            res.to_csv("./Results/Results_5CV_" + time + ".csv")
 
         elif args.cv == "False":
+            print("Testing CAC with heldout dataset 5 times")
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=108)
             X_train = scale.fit_transform(X_train)
             X_test = scale.fit_transform(X_test)
 
-            for i in range(5):
+            epochs = 5
+            base_scores = np.zeros((epochs, 2))
+            km_scores = np.zeros((epochs, 2))
+            cac_scores = np.zeros((epochs, 2))
+
+            for i in range(epochs):
                 c = CAC(n_clusters, alpha, classifier=CLASSIFIER)
                 c.fit(X_train, y_train)
                 y_pred, y_proba = c.predict(X_test, -1)
-                f1_cac, auc_cac = f1_score(y_pred, y_test), roc_auc_score(y_test, y_proba)
+
+                cac_scores[i, 0] = f1_score(y_pred, y_test)
+                cac_scores[i, 1] = roc_auc_score(y_test, y_proba)
 
                 y_pred, y_proba = c.predict(X_test, 0)
-                f1_km, auc_km = f1_score(y_pred, y_test), roc_auc_score(y_test, y_proba)
+                km_scores[i, 0] = f1_score(y_pred, y_test)
+                km_scores[i, 1] = roc_auc_score(y_test, y_proba)
 
                 clf = get_classifier(CLASSIFIER)
                 clf.fit(X_train, y_train.ravel())
-                preds = clf.predict(X_test)
+                y_pred = clf.predict(X_test)
                 pred_proba = clf.predict_proba(X_test)
 
-                print("Base final test performance: ", "F1: ", f1_score(preds, y_test), "AUC: ", roc_auc_score(y_test.ravel(), pred_proba[:,1]))
-                print("KM final test performance: ", "F1: ", f1_km, "AUC: ", auc_km)
-                print("CAC final test performance: ", "F1: ", f1_cac, "AUC: ", auc_cac)
+                base_scores[i, 0] = f1_score(y_pred, y_test)
+                base_scores[i, 1] = roc_auc_score(y_test.ravel(), pred_proba[:,1])
 
-                test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1_km, auc_km, f1_cac, auc_cac]
-                test_results.loc[test_idx] = [DATASET, CLASSIFIER, alpha] + test_f1_auc
+            print("5-Fold Base scores", np.mean(base_scores, axis=0))
+            print("5-Fold KMeans scores", np.mean(km_scores, axis=0))        
+            print("5-Fold terminal CAC scores", np.mean(cac_scores, axis=0))
+            print("\n")
+
+            test_results.loc[test_idx] = [DATASET, CLASSIFIER, alpha] + list(np.mean(base_scores, axis=0)) + list(np.std(base_scores, axis=0)) + \
+            list(np.mean(km_scores, axis=0)) + list(np.std(km_scores, axis=0)) + \
+            list(np.mean(cac_scores, axis=0)) + list(np.std(cac_scores, axis=0))
             test_idx += 1
-            test_results.to_csv("./Results/Test_Results_STATIC_ALPHA" + ".csv", index=None)
+            test_results.to_csv("./Results/Test_Results_STATIC_ALPHA_" + time + ".csv", index=None)
