@@ -31,7 +31,7 @@ from CAC import CAC
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='ALL')
-parser.add_argument('--init', default='RAND')
+parser.add_argument('--init', default='KM')
 parser.add_argument('--classifier', default='ALL')
 parser.add_argument('--verbose', default="False")
 parser.add_argument('--decay', default='Fixed')

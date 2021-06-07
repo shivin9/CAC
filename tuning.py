@@ -32,7 +32,7 @@ from CAC import CAC
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='ALL')
-parser.add_argument('--init', default='RAND')
+parser.add_argument('--init', default='KM')
 parser.add_argument('--classifier', default='ALL')
 parser.add_argument('--verbose', default="False")
 parser.add_argument('--decay', default='Fixed')
@@ -305,7 +305,7 @@ for CLASSIFIER in classifier:
             y_pred, y_proba = c.predict(X_test, -1)
             f1_cac, auc_cac = f1_score(y_pred, y_test), roc_auc_score(y_test, y_proba)
 
-            y_pred, y_proba = c.predict(X_val, 0)
+            y_pred, y_proba = c.predict(X_test, 0)
             f1_km, auc_km = f1_score(y_pred, y_test), roc_auc_score(y_test, y_proba)
 
             clf = get_classifier(CLASSIFIER)
@@ -319,8 +319,8 @@ for CLASSIFIER in classifier:
             print("\n")
 
             # Can choose whether it to do it w.r.t F1 or AUC
-            if np.mean(cac_term_scores, axis=0)[1] > best_score:
-                best_score = np.mean(cac_term_scores, axis=0)[1]
+            if np.mean(cac_term_scores, axis=0)[0] > best_score:
+                best_score = np.mean(cac_term_scores, axis=0)[0]
                 best_alpha = alpha
                 best_k = n_clusters
                 test_f1_auc = [f1_score(preds, y_test), roc_auc_score(y_test.ravel(), pred_proba[:,1]), f1_km, auc_km, f1_cac, auc_cac]

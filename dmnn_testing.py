@@ -118,7 +118,7 @@ n_cluster_params = {
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=108)
 
 def neural_network(n_experts, cluster_algo, alpha):
-  beta = np.infty # do not change this
+  beta = -np.infty # do not change this
   precision_lst = []
   recall_lst = []
   fscore_lst = []
@@ -287,11 +287,11 @@ def neural_network(n_experts, cluster_algo, alpha):
       # print('AUROC: ', auroc_lst[-1])
       # print('Accuracy: ', accuracy_lst[-1])
 
-  return {'precision': precision_lst,
-          'recall': recall_lst,
-          'f1_score': fscore_lst,
-          'auroc': auroc_lst,
-          'accuracy': accuracy_lst}
+  return {'precision': np.mean(precision_lst),
+          'recall': np.mean(recall_lst),
+          'f1_score': np.mean(fscore_lst),
+          'auroc': np.mean(auroc_lst),
+          'accuracy': np.mean(accuracy_lst)}
 
 test_results = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha', 'k', \
     'Base_F1_mean', 'Base_AUC_mean',\
@@ -307,4 +307,4 @@ scores_cac = neural_network(k, 'CAC', alpha)
 test_f1_auc = [scores_base['f1_score'], scores_base['auroc'], scores_km['f1_score'], scores_km['auroc'], scores_cac['f1_score'], scores_cac['auroc']]
 test_results.loc[0] = [DATASET, "DMNN", alpha, k] + test_f1_auc
 
-test_results.to_csv("./Results/Final_DMNN_Results_" + args.dataset + ".csv", index=None)
+test_results.to_csv("./Results/5CV_DMNN_Results_" + args.dataset + ".csv", index=None)

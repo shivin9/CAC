@@ -98,6 +98,7 @@ class CAC(object):
         self.classification_loss.append(km_loss)
         self.scores.append(scores)
         self.centers.append(np.array([centers, positive_centers, negative_centers]))
+        self.cluster_stats.append(np.array(cluster_stats))
 
         lbls.append(np.copy(labels))
 
@@ -106,12 +107,11 @@ class CAC(object):
             pt = X[idp]
             cluster_id = labels[idp]
             errors[iteration][cluster_id][0] += self.compute_euclidean_distance(pt, centers[cluster_id])
-            errors[iteration][cluster_id][1] -= self.alpha*self.compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
+            errors[iteration][cluster_id][1] -= self.compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
 
         cac_classification_loss.append(km_loss)
 
         for iteration in range(1, self.n_epochs):
-            # print("iteration #", iteration-1)
             if self.decay == "inv":
                 alpha_t = self.alpha*(iteration*0.1)/(1+iteration*0.1)
             elif self.decay == "fixed":
@@ -179,7 +179,9 @@ class CAC(object):
                 pt = X[idp]
                 cluster_id = labels[idp]
                 errors[iteration][cluster_id][0] += self.compute_euclidean_distance(pt, centers[cluster_id])
-                errors[iteration][cluster_id][1] -= alpha_t*self.compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
+                errors[iteration][cluster_id][1] -= self.compute_euclidean_distance(positive_centers[cluster_id], negative_centers[cluster_id])
+
+            self.cluster_stats.append(np.array(cluster_stats))
 
             # Store best clustering
             # print(np.sum(errors[iteration]))
@@ -196,11 +198,11 @@ class CAC(object):
                 self.classification_loss.append(loss)
 
                 if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-                    # print("converged at itr: ", iteration)
+                    print("converged at itr: ", iteration)
                     break
 
             if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-                # print("converged at itr: ", iteration)
+                print("converged at itr: ", iteration)
                 scores, loss, model = self.evaluate_cac(X, y, labels)
                 self.scores.append(scores)
                 self.centers.append(np.array([centers, positive_centers, negative_centers]))
@@ -208,9 +210,10 @@ class CAC(object):
                 self.classification_loss.append(loss)
                 break
 
-        self.cluster_stats = cluster_stats
+
         self.clustering_loss = errors[:iteration+1]
         self.labels = lbls
+        self.cluster_stats = np.array(self.cluster_stats)
         return self
 
     def get_base_model(self, classifier):
@@ -363,11 +366,11 @@ class CAC(object):
         r = 1 - p/(p+n)
         r_new = 1 - p_new/(p_new + n_new)
 
-        arr1 = np.array([mup_new, mup, mu_new])
-        arr2 = np.array([mun_new, mun, mu])
+        # arr1 = np.array([mup_new, mup, mu_new])
+        # arr2 = np.array([mun_new, mun, mu])
 
-        # arr1 = np.array([r_new*mup_new, r*mup, mu_new])
-        # arr2 = np.array([(1-r_new)*mun_new, (1-r)*mun, mu])
+        arr1 = np.array([r_new*mup_new, r*mup, mu_new])
+        arr2 = np.array([(1-r_new)*mun_new, (1-r)*mun, mu])
 
         diff = arr1 - arr2
 
@@ -408,8 +411,12 @@ class CAC(object):
         r = 1 - p/(p+n)
         r_new = 1 - p_new/(p_new + n_new)
 
-        arr1 = np.array([mup_new, mup, mu_new])
-        arr2 = np.array([mun_new, mun, mu])
+        # arr1 = np.array([mup_new, mup, mu_new])
+        # arr2 = np.array([mun_new, mun, mu])
+
+        arr1 = np.array([r_new*mup_new, r*mup, mu_new])
+        arr2 = np.array([(1-r_new)*mun_new, (1-r)*mun, mu])
+
         diff = arr1 - arr2
         vals = np.sum(np.square(diff), axis=1)
 

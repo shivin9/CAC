@@ -102,7 +102,7 @@ else:
 
 def neural_network(X_train, y_train, X_test, y_test, n_experts, cluster_algo, alpha):
     # alpha = 0.04 # change this value only
-    beta = np.infty # do not change this
+    beta = -np.infty # do not change this
     data_len = X_train.shape[1]
     ## Define Neural Network
     experts = []
@@ -296,6 +296,7 @@ scale = StandardScaler()
 res_idx = 0
 
 if args.cv == "False":
+    print("Testing on HELD OUT test set (5 times) with best alpha")
     X1, X_test, y1, y_test = train_test_split(X, y, stratify=y, random_state=108)
     alpha = params[args.dataset][0]
     n_clusters = params[args.dataset][1]

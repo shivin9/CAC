@@ -9,6 +9,7 @@ from sklearn.linear_model import LogisticRegression, Perceptron, SGDClassifier, 
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from scipy.stats import ttest_ind
+from sklearn.metrics import log_loss
 from sklearn import model_selection, metrics
 from sklearn.svm import SVC, LinearSVC
 from sklearn.tree import DecisionTreeClassifier
@@ -27,6 +28,8 @@ import argparse
 import random
 import umap
 import sys
+from scipy.spatial.qhull import ConvexHull
+from scipy.spatial.distance import euclidean
 
 from CAC import CAC
 
@@ -107,27 +110,67 @@ def get_dataset(DATASET):
 	return X, y
 
 
+def compute_euclidean_distance(point, centroid):
+    # return np.sum((point - centroid)**2)
+    return np.sqrt(np.sum((point - centroid)**2))
+
+
+def ics(X, y, labels):
+	k = len(np.unique(labels))
+	vals = np.zeros(k)
+	mus = []
+	# print(k)
+	for i in range(k):
+		pts_index = np.where(labels == i)[0]
+		n_class_index = np.where(y[pts_index] == 0)[0]
+		p_class_index = np.where(y[pts_index] == 1)[0]
+
+		n_class = X[n_class_index]
+		p_class = X[p_class_index]
+
+		negative_centers = n_class.mean(axis=0)
+		positive_centers = p_class.mean(axis=0)
+		vals[i] = compute_euclidean_distance(positive_centers, negative_centers)
+
+		mu = np.mean(X[pts_index], axis=0)
+		mus.append(mu)
+
+	perimeter = 0
+	if k > 1:
+		for i in range(len(mus)):
+			perimeter += euclidean(mus[i%k], mus[(i+1)%k])
+
+	return sum(vals), perimeter
+
+
 def plot(DATASET, n_clusters=2):
 	test_loss = []
 	train_loss = []
-	test_scores = []
+	clustering_scores = []
 	X, y = get_dataset(DATASET)
 	scale = StandardScaler()
 	X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=108)
 	X_train = scale.fit_transform(X_train)
 	X_test = scale.fit_transform(X_test)
-	clustering = KMeans(n_clusters=n_clusters, random_state=0, max_iter=300)
-	labels = clustering.fit(X_train).labels_
-
+	pts = []
 	for alpha in alphs:
 		c = CAC(n_clusters, alpha, verbose=True)
 		c.fit(X_train, y_train)
 		train_loss.append(c.classification_loss)
-		scores, loss = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)
-		print("Test loss: ", loss)
-		test_loss.append(loss)
-		test_scores.append(scores[1][-1])
-	return train_loss, test_loss, test_scores
+		clustering_scores.append(c.clustering_loss)
+		# print(c.clustering_loss)
+		pts.append(c.cluster_stats)
+		# scores, loss = score(X_test, np.array(y_test), models, cluster_centers[1], alt_labels, alpha, classifier=CLASSIFIER, flag="old", verbose=True)
+		# print("Test loss: ", loss)
+		# test_loss.append(loss)
+		# test_scores.append(scores[1][-1])
+		# print("KM avg. sep", np.sum(c.clustering_loss[0][:,1]/np.sum(c.cluster_stats[0], axis=1)))
+		# print("CAC avg. sep", np.sum(c.clustering_loss[-1][:,1]/np.sum(c.cluster_stats[-1], axis=1)))
+
+		# print("KM avg. km", np.sum(c.clustering_loss[0][:,0]/np.sum(c.cluster_stats[0], axis=1)))
+		# print("CAC avg. km", np.sum(c.clustering_loss[-1][:,0]/np.sum(c.cluster_stats[-1], axis=1)))
+
+	return train_loss, clustering_scores, pts
 
 '''
 lines = []
