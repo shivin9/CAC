@@ -354,7 +354,7 @@ for CLASSIFIER in classifier:
             X_train = scale.fit_transform(X_train)
             X_test = scale.fit_transform(X_test)
 
-            epochs = 5
+            epochs = 1
             base_scores = np.zeros((epochs, 2))
             km_scores = np.zeros((epochs, 2))
             cac_scores = np.zeros((epochs, 2))
@@ -366,10 +366,15 @@ for CLASSIFIER in classifier:
 
                 cac_scores[i, 0] = f1_score(y_pred, y_test)
                 cac_scores[i, 1] = roc_auc_score(y_test, y_proba)
+                print("CAC confusion matrix")
+                print(confusion_matrix(y_test, y_pred))
 
                 y_pred, y_proba = c.predict(X_test, 0)
                 km_scores[i, 0] = f1_score(y_pred, y_test)
                 km_scores[i, 1] = roc_auc_score(y_test, y_proba)
+
+                print("KM confusion matrix")
+                print(confusion_matrix(y_test, y_pred))
 
                 clf = get_classifier(CLASSIFIER)
                 clf.fit(X_train, y_train.ravel())
@@ -378,6 +383,7 @@ for CLASSIFIER in classifier:
 
                 base_scores[i, 0] = f1_score(y_pred, y_test)
                 base_scores[i, 1] = roc_auc_score(y_test.ravel(), pred_proba[:,1])
+                print("Base classifier confusion matrix")
                 print(confusion_matrix(y_test, y_pred))
 
             print("5-Fold Base scores", np.mean(base_scores, axis=0))
