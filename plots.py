@@ -102,10 +102,10 @@ def get_dataset(DATASET):
 	    X = pd.read_csv("./data/" + DATASET + "/" + "X.csv").to_numpy()
 	    y = pd.read_csv("./data/" + DATASET + "/" + "y.csv").to_numpy()
 
-	y1 = []
-	for i in range(len(y)):
-		y1.append(y[i])
-	y = np.array(y)
+		y1 = []
+		for i in range(len(y)):
+			y1.append(y[i])
+		y = np.array(y)
 	return X, y
 
 
