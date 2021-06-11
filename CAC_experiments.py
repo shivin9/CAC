@@ -15,8 +15,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import MultinomialNB
 from matplotlib import pyplot as plt
-from sklearn.calibration import CalibratedClassifierCV
-import seaborn as sns
 from datetime import datetime
 from tqdm import tqdm
 from sklearn.cluster import KMeans
@@ -38,7 +36,7 @@ parser.add_argument('--decay', default='Fixed')
 parser.add_argument('--cv', default='False')
 parser.add_argument('--alpha')
 parser.add_argument('--k')
-args = parser.parse_args()  
+args = parser.parse_args()
 
 now = datetime.now()
 time = now.strftime("%H:%M:%S")
@@ -380,6 +378,7 @@ for CLASSIFIER in classifier:
 
                 base_scores[i, 0] = f1_score(y_pred, y_test)
                 base_scores[i, 1] = roc_auc_score(y_test.ravel(), pred_proba[:,1])
+                print(confusion_matrix(y_test, y_pred))
 
             print("5-Fold Base scores", np.mean(base_scores, axis=0))
             print("5-Fold KMeans scores", np.mean(km_scores, axis=0))        

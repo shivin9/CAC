@@ -1,14 +1,13 @@
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, accuracy_score, f1_score, confusion_matrix, roc_auc_score, roc_curve,\
-davies_bouldin_score as dbs, normalized_mutual_info_score as nmi
+davies_bouldin_score as dbs, normalized_mutual_info_score as nmi, adjusted_rand_score as ars
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression, Perceptron, SGDClassifier, RidgeClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-from scipy.stats import ttest_ind
 from sklearn.metrics import log_loss
 from sklearn import model_selection, metrics
 from sklearn.svm import SVC, LinearSVC
@@ -16,8 +15,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import MultinomialNB
 from matplotlib import pyplot as plt
-from sklearn.model_selection import GridSearchCV
-import seaborn as sns
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 from typing import Tuple
@@ -28,8 +25,6 @@ import argparse
 import random
 import umap
 import sys
-from scipy.spatial.qhull import ConvexHull
-from scipy.spatial.distance import euclidean
 
 from CAC import CAC
 
@@ -107,6 +102,10 @@ def get_dataset(DATASET):
 	    X = pd.read_csv("./data/" + DATASET + "/" + "X.csv").to_numpy()
 	    y = pd.read_csv("./data/" + DATASET + "/" + "y.csv").to_numpy()
 
+	y1 = []
+	for i in range(len(y)):
+		y1.append(y[i])
+	y = np.array(y)
 	return X, y
 
 

@@ -22,6 +22,7 @@ import sys
 import umap
 
 scale = StandardScaler()
+
 ##############################################################################
 ##############################################################################
 ##############################################################################
@@ -198,11 +199,11 @@ class CAC(object):
                 self.classification_loss.append(loss)
 
                 if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-                    print("converged at itr: ", iteration)
+                    # print("converged at itr: ", iteration)
                     break
 
             if ((lbls[iteration] == lbls[iteration-1]).all()) and iteration > 0:
-                print("converged at itr: ", iteration)
+                # print("converged at itr: ", iteration)
                 scores, loss, model = self.evaluate_cac(X, y, labels)
                 self.scores.append(scores)
                 self.centers.append(np.array([centers, positive_centers, negative_centers]))
@@ -366,11 +367,11 @@ class CAC(object):
         r = 1 - p/(p+n)
         r_new = 1 - p_new/(p_new + n_new)
 
-        # arr1 = np.array([mup_new, mup, mu_new])
-        # arr2 = np.array([mun_new, mun, mu])
+        arr1 = np.array([mup_new, mup, mu_new])
+        arr2 = np.array([mun_new, mun, mu])
 
-        arr1 = np.array([r_new*mup_new, r*mup, mu_new])
-        arr2 = np.array([(1-r_new)*mun_new, (1-r)*mun, mu])
+        # arr1 = np.array([r_new*mup_new, r*mup, mu_new])
+        # arr2 = np.array([(1-r_new)*mun_new, (1-r)*mun, mu])
 
         diff = arr1 - arr2
 
@@ -411,11 +412,11 @@ class CAC(object):
         r = 1 - p/(p+n)
         r_new = 1 - p_new/(p_new + n_new)
 
-        # arr1 = np.array([mup_new, mup, mu_new])
-        # arr2 = np.array([mun_new, mun, mu])
+        arr1 = np.array([mup_new, mup, mu_new])
+        arr2 = np.array([mun_new, mun, mu])
 
-        arr1 = np.array([r_new*mup_new, r*mup, mu_new])
-        arr2 = np.array([(1-r_new)*mun_new, (1-r)*mun, mu])
+        # arr1 = np.array([r_new*mup_new, r*mup, mu_new])
+        # arr2 = np.array([(1-r_new)*mun_new, (1-r)*mun, mu])
 
         diff = arr1 - arr2
         vals = np.sum(np.square(diff), axis=1)
