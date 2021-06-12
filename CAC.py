@@ -12,7 +12,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from matplotlib import pyplot as plt
-import seaborn as sns
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 from typing import Tuple
@@ -280,7 +279,6 @@ class CAC(object):
         sen = self.sensitivity(params)[0]
         scores = [acc, f1, auc, spe, sen]
         return scores, sum(loss), models
-
 
     def predict(self, X_test, iteration):
         order = []
