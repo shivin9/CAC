@@ -18,10 +18,10 @@ clf.fit(X_train, y_train)
 	- Training Labels.
 - alpha: _Float_
 	- Learning Rate of CAC.
-- beta: _Float_.
-	The maximum allowed decrease in CAC cost function.
+- beta: _Float_
+	- The maximum allowed decrease in CAC cost function.
 - n_epochs: _Int_
-	Number of training epochs.
+	- Number of training epochs.
 - classifier: The choice of base classifier. Choose from
 	- LR: Logistic Regression (default)
 	- RF: Random Forest with 10 estimators
@@ -59,7 +59,9 @@ clf.fit(X_train, y_train)
 - clustering_loss: Total CAC loss at every iteration
 - classification_loss: Total classification loss (log-loss) at every iteration
 
-
+### Methods
+- __fit__(X_train, y_train):
+- __predict__(X_test):
 
 ## Output:
 The trained model.
