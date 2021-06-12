@@ -16,11 +16,16 @@ clf.fit(X_train, y_train)
 - y_train: The binary labels of input data points
 - alpha: Hyperparameter
 - classifier: The choice of base classifier. Choose from
-	LR: Logistic Regression
-	RF: Random Forest with 10 estimators
-	SVM: Linear SVM
-	Perceptron: Linear Perceptron
-	DT: Decision Tree
+	- LR: Logistic Regression (default)
+	- RF: Random Forest with 10 estimators
+	- SVM: Linear SVM
+	- Perceptron: Linear Perceptron
+	- DT: Decision Tree
+	- Ridge: Ridge Classifier
+	- SGD: Stochastic Gradient Descent classifier
+	- LDA: Fischer's LDA classifier
+	- KNN: k-Nearest Neighbour (k=5)
+	- NB: Naive Bayes Classifier
 
 
 ## Output:
