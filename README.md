@@ -7,14 +7,21 @@ CAC is a clustering based framework for classification. The framework proceeds i
 Training Phase:
 ===============
 ```
-clf = CAC(n_clusters, alpha, classifier=CLASSIFIER)
+clf = CAC(n_clusters, alpha, beta=-np.infty, n_epochs=100, classifier="LR", decay="fixed", init="KM", verbose=False))
 clf.fit(X_train, y_train)
 ```
 
-## Input:
-- X_train: The input data which is a normalized numpy matrix.
-- y_train: The binary labels of input data points
-- alpha: Hyperparameter
+### Paremeters:
+- X_train: _array-like of shape (n_samples, n_features)_
+	- Training Samples.
+- y_train: _array-like of shape (n_samples,)_
+	- Training Labels.
+- alpha: _Float_
+	- Learning Rate of CAC.
+- beta: _Float_.
+	The maximum allowed decrease in CAC cost function.
+- n_epochs: _Int_
+	Number of training epochs.
 - classifier: The choice of base classifier. Choose from
 	- LR: Logistic Regression (default)
 	- RF: Random Forest with 10 estimators
@@ -26,29 +33,50 @@ clf.fit(X_train, y_train)
 	- LDA: Fischer's LDA classifier
 	- KNN: k-Nearest Neighbour (k=5)
 	- NB: Naive Bayes Classifier
+- decay: {_"inv", "fixed", "exp"_}
+	- Decay strategy for `alpha`.
+- init: {_"RAND", "KM"_}
+	- Initialization scheme. "RAND": Random, "KM": k-means intialization.
+- verbose: _bool_
+	- Parameter to control whether to train models at every intermediate iteration.
+
+
+
+### Attributes:
+- k: n_clusters.
+- alpha: alpha.
+- beta: beta.
+- classifier: Classifier used.
+- decay: decay.
+- init: Initialization scheme.
+- verbose: verbose parameter.
+- n_epochs: n_epochs.
+- centers: An array of cluster centers at every iteration of CAC.
+- cluster_stats: An array containing counts of _+ve_ and _-ve_ class points in every cluster.
+- models: An array containing trained models on the initial and final clusters.
+- scores: Training scores (Accuracy, F1, AUC, Sensitivity, Specificity) of models trained at intermediate iterations
+- labels: Cluster labels of points at every iteration
+- clustering_loss: Total CAC loss at every iteration
+- classification_loss: Total classification loss (log-loss) at every iteration
+
 
 
 ## Output:
-- clusters: the cluster centroids (µ+, µ- and µ) for all clusters and their F1/RoC values
-- models: The trained models
-- alt_labels: the labels for all testing points in all iterations
-- errors: The unsupervised loss of CAC for every iteration
-- seps: The sum of inter-class distances of all clusters for every iteration
-- loss: The supervised loss of the models trained in every iteration
-
+The trained model.
 
 Testing/Evaluation Phase:
 =========================
 
 ```
-y_pred, y_proba = c.predict(X_test, -1) # get the predictions at the last (-1) iteration
+y_pred, y_proba = c.predict(X_test, ITERATION)
 f1 = f1_score(y_pred, y_test)
 auc = roc_auc_score(y_test, y_proba)
 ```
 
 ## Input:
-- X_test: The testing data
-- y_test: The labels of test data. Used to compare with the test predictions to obtain the scores
+- X_test: _array-like of shape (n_samples, n_features)_. Testing Samples.
+- y_test: _array-like of shape (n_samples,)_. Testing Labels.
+- ITERATION: _Int_: To get the predictions at the specified iteration
 
 ## Output:
-- test_scores: An array of arrays containing Accuracy, F1, AUC, Specificity and Sensitivity scores for every iteration. The first value in every array has the performance metric for classifiers trained on the input clusters given by the user.
+- test_scores: A tuple containing the predictions and confidence scores of every prediction.
