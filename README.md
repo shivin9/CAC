@@ -60,8 +60,9 @@ clf.fit(X_train, y_train)
 - classification_loss: Total classification loss (log-loss) at every iteration
 
 ### Methods
-- __fit__(X_train, y_train):
-- __predict__(X_test):
+- __fit__(X_train, y_train): Fit the model according to the given training data.
+- __predict__(X_test): Predict class labels and confidence scores for samples.
+
 
 ## Output:
 The trained model.
