@@ -3,9 +3,26 @@ CAC
 
 CAC is a clustering based framework for classification. The framework proceeds in 2 phases, training and testing as follow:-
 
+![](assets/CAC_full.png)
 
-Training Phase:
-===============
+## Demo
+Run `python3 CAC_experiments.py --init KM --verbose False --classifier LR --dataset adult --cv False --alpha 0.01`
+
+
+## Command line options
+  * `--dataset`: The dataset to be used for training. Choices 'adult', 'credit', 'titanic', 'magic', 'cic' (default 'ALL')
+  * `--alpha`: The alpha value to be used. (default: 0.01)
+  * `--classifier`: The base classifier to be used with CAC. (default: LR)
+  * `--cv`: Test CAC with 5-fold Cross Validation (default: False)
+  * `--verbose`: Train base classifier on every intermediate iteration (default: False)
+
+## Input File Format
+
+CAC expects every dataset in its separate folder within the `data` folder. `X.csv` denotes the comma-separated data file and `y.csv` contains the corresponding binary labels for the data points.
+
+# API
+
+## Training Phase:
 ```
 clf = CAC(n_clusters, alpha, beta=-np.infty, n_epochs=100, classifier="LR", decay="fixed", init="KM", verbose=False))
 clf.fit(X_train, y_train)
@@ -67,11 +84,10 @@ clf.fit(X_train, y_train)
 ## Output:
 The trained model.
 
-Testing/Evaluation Phase:
-=========================
+## Testing/Evaluation Phase:
 
 ```
-y_pred, y_proba = c.predict(X_test, ITERATION)
+y_pred, y_proba = clf.predict(X_test, ITERATION)
 f1 = f1_score(y_pred, y_test)
 auc = roc_auc_score(y_test, y_proba)
 ```

@@ -292,7 +292,7 @@ for CLASSIFIER in classifier:
                 X_train = scale.fit_transform(X_train)
                 X_test = scale.fit_transform(X_test)
 
-                c = CAC(n_clusters, alpha, classifier=CLASSIFIER)
+                c = CAC(n_clusters, alpha, classifier=CLASSIFIER, verbose=VERBOSE)
                 c.fit(X_train, y_train)
                 # cluster_centers, models, alt_labels, errors, seps, l1 = cac(X_train, np.ravel(y_train), n_clusters, 100, alpha, beta, classifier=CLASSIFIER, verbose=VERBOSE)
                 y_pred, y_proba = c.predict(X_test, -1)
@@ -360,7 +360,7 @@ for CLASSIFIER in classifier:
             cac_scores = np.zeros((epochs, 2))
 
             for i in range(epochs):
-                c = CAC(n_clusters, alpha, classifier=CLASSIFIER)
+                c = CAC(n_clusters, alpha, classifier=CLASSIFIER, verbose=VERBOSE)
                 c.fit(X_train, y_train)
                 y_pred, y_proba = c.predict(X_test, -1)
 
