@@ -6,21 +6,20 @@ CAC is a clustering based framework for classification. The framework proceeds i
 
 Training Phase:
 ===============
-
-clusters, models, alt_labels, errors, seps, loss = cac(X_train, labels, 10, np.ravel(y_train), alpha, beta, classifier="LR")
+```
+clf = CAC(n_clusters, alpha, classifier=CLASSIFIER)
+clf.fit(X_train, y_train)
+```
 
 ## Input:
 - X_train: The input data which is a normalized numpy matrix.
-- labels: A user-defined clustering of training data points. Random clustering: `labels = np.random.randint(0, n_clusters, [len(X_train)])`
 - y_train: The binary labels of input data points
 - alpha: Hyperparameter
-- beta: Gradient cutoff parameter. Set to -np.infty
 - classifier: The choice of base classifier. Choose from
 	LR: Logistic Regression
 	RF: Random Forest with 10 estimators
 	SVM: Linear SVM
 	Perceptron: Linear Perceptron
-	ADB: AdaBoost
 	DT: Decision Tree
 
 
@@ -36,19 +35,15 @@ clusters, models, alt_labels, errors, seps, loss = cac(X_train, labels, 10, np.r
 Testing/Evaluation Phase:
 =========================
 
-
-test_scores = score(X_test, y_test, models, clusters[1], alt_labels, alpha, flag="normal", verbose=True)[1:3]
+```
+y_pred, y_proba = c.predict(X_test, -1) # get the predictions at the last (-1) iteration
+f1 = f1_score(y_pred, y_test)
+auc = roc_auc_score(y_test, y_proba)
+```
 
 ## Input:
 - X_test: The testing data
 - y_test: The labels of test data. Used to compare with the test predictions to obtain the scores
-- clusters[1]: The cluster centroids obtained in the training phase
-- alt_labels: The cluster labels obtained in the training phase
-- alpha: Hyperparameter
-- flag: This flag decides how the points are assigned to the training clusters.
-	"cac": Compute nearest centroid using the ||x_i - µ||^2 - alpha * ||µ+ - µ-||^2
-	"Normal": Compute nearest centroid using normal euclidean distance
-- verbose: 
 
 ## Output:
 - test_scores: An array of arrays containing Accuracy, F1, AUC, Specificity and Sensitivity scores for every iteration. The first value in every array has the performance metric for classifiers trained on the input clusters given by the user.
