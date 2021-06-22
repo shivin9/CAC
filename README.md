@@ -8,7 +8,7 @@ We design a classification algorithm called Clustering Aware Classification (CAC
 
 ![](assets/CAC_full.png)
 
-CAC problem setting. Data points (here p<sub>1</sub>) are selected iteratively and assigned to clusters (here C<sub>1</sub>) based on the cluster update equations. At testing time, x<sup>^</sup> is assigned to the cluster that lies nearest to x<sup>^</sup>.
+CAC problem setting. Data points (here p<sub>1</sub>) are selected iteratively and assigned to clusters (here C<sub>1</sub>) based on the cluster update equations. At testing time, x<sup>\*</sup> is assigned to the cluster that lies nearest to x<sup>\*</sup>.
 
 ## Datasets
 1. [Titanic](https://data.world/nrippner/titanic-disaster-dataset)
