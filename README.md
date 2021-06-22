@@ -1,9 +1,23 @@
-CAC
+Don't Divide; Polarize and Conquer!
 ======
 
-CAC is a clustering based framework for classification. The framework proceeds in 2 phases, training and testing as follow:-
+Python implementation of 
+- [Don't Divide; Polarize and Conquer!](https://arxiv.org/pdf/2102.11872.pdf). *Shivin Srivastava, Siddharth Bhatia, Lingxiao Huang, Jun Heng Lim, Kenji Kawaguchi, Vaibhav Rajan*. (Under Review)
+
+We design a classification algorithm called Clustering Aware Classification (CAC), to find clusters in data that are tailor made to be easily classifiable while being used as training datasets by classifiers for each underlying subpopulation.
 
 ![](assets/CAC_full.png)
+
+CAC problem setting. Data points (here p<sub>1</sub>) are selected iteratively and assigned to clusters (here C<sub>1</sub>) based on the cluster update equations. At testing time, x<sup>^</sup> is assigned to the cluster that lies nearest to x<sup>^</sup>.
+
+## Datasets
+1. [Titanic](https://data.world/nrippner/titanic-disaster-dataset)
+2. [Magic](https://archive.ics.uci.edu/ml/datasets/magic+gamma+telescope)
+3. [Adult](https://archive.ics.uci.edu/ml/datasets/adult)
+4. [Creditcard](https://archive.ics.uci.edu/ml/datasets/default+of+credit+card+clients)
+5. [Diabetes](https://archive.ics.uci.edu/ml/datasets/diabetes+130-us+hospitals+for+years+1999-2008)
+6. [CIC Mortality Prediction](https://physionet.org/content/challenge-2012/1.0.0/)
+
 
 ## Demo
 Run `python3 CAC_experiments.py --init KM --verbose False --classifier LR --dataset adult --cv False --alpha 0.01`
