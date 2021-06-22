@@ -1,7 +1,7 @@
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, accuracy_score, f1_score, confusion_matrix, roc_auc_score, roc_curve,\
-davies_bouldin_score as dbs, normalized_mutual_info_score as nmi
+davies_bouldin_score as dbs, normalized_mutual_info_score as nmi, average_precision_score
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
@@ -355,9 +355,9 @@ for CLASSIFIER in classifier:
             X_test = scale.fit_transform(X_test)
 
             epochs = 1
-            base_scores = np.zeros((epochs, 2))
-            km_scores = np.zeros((epochs, 2))
-            cac_scores = np.zeros((epochs, 2))
+            base_scores = np.zeros((epochs, 3))
+            km_scores = np.zeros((epochs, 3))
+            cac_scores = np.zeros((epochs, 3))
 
             for i in range(epochs):
                 c = CAC(n_clusters, alpha, classifier=CLASSIFIER, verbose=VERBOSE)
@@ -366,12 +366,14 @@ for CLASSIFIER in classifier:
 
                 cac_scores[i, 0] = f1_score(y_pred, y_test)
                 cac_scores[i, 1] = roc_auc_score(y_test, y_proba)
+                cac_scores[i, 2] = average_precision_score(y_test, y_proba)
                 print("CAC confusion matrix")
                 print(confusion_matrix(y_test, y_pred))
 
                 y_pred, y_proba = c.predict(X_test, 0)
                 km_scores[i, 0] = f1_score(y_pred, y_test)
                 km_scores[i, 1] = roc_auc_score(y_test, y_proba)
+                km_scores[i, 2] = average_precision_score(y_test, y_proba)
 
                 print("KM confusion matrix")
                 print(confusion_matrix(y_test, y_pred))
@@ -383,16 +385,18 @@ for CLASSIFIER in classifier:
 
                 base_scores[i, 0] = f1_score(y_pred, y_test)
                 base_scores[i, 1] = roc_auc_score(y_test.ravel(), pred_proba[:,1])
+                base_scores[i, 2] = average_precision_score(y_test.ravel(), pred_proba[:,1])
+
                 print("Base classifier confusion matrix")
                 print(confusion_matrix(y_test, y_pred))
 
-            print("5-Fold Base scores", np.mean(base_scores, axis=0))
-            print("5-Fold KMeans scores", np.mean(km_scores, axis=0))        
-            print("5-Fold terminal CAC scores", np.mean(cac_scores, axis=0))
+            print("Average Base scores", np.mean(base_scores, axis=0))
+            print("Average KMeans scores", np.mean(km_scores, axis=0))        
+            print("Average terminal CAC scores", np.mean(cac_scores, axis=0))
             print("\n")
 
-            test_results.loc[test_idx] = [DATASET, CLASSIFIER, alpha] + list(np.mean(base_scores, axis=0)) + list(np.std(base_scores, axis=0)) + \
-            list(np.mean(km_scores, axis=0)) + list(np.std(km_scores, axis=0)) + \
-            list(np.mean(cac_scores, axis=0)) + list(np.std(cac_scores, axis=0))
-            test_idx += 1
-            test_results.to_csv("./Results/Test_Results_STATIC_ALPHA_" + time + ".csv", index=None)
+            # test_results.loc[test_idx] = [DATASET, CLASSIFIER, alpha] + list(np.mean(base_scores, axis=0)) + list(np.std(base_scores, axis=0)) + \
+            # list(np.mean(km_scores, axis=0)) + list(np.std(km_scores, axis=0)) + \
+            # list(np.mean(cac_scores, axis=0)) + list(np.std(cac_scores, axis=0))
+            # test_idx += 1
+            # test_results.to_csv("./Results/Test_Results_STATIC_ALPHA_" + time + ".csv", index=None)

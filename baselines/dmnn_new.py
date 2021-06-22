@@ -219,6 +219,7 @@ def neural_network(X_train, y_train, X_test, y_test, n_experts, cluster_algo, al
     ## Check cluster gating accuracy
     y_pred = cluster.predict(X_train) 
     scores = precision_recall_fscore_support(X_train_clusters_sparse, y_pred > 0.5, average='weighted')
+
     # print('Precision (cluster): ', scores[0])
     # print('Recall (cluster): ', scores[1])
     # print('F1 score (cluster): ', f1_score(X_train_clusters_sparse, y_pred > 0.5, average='micro'))
@@ -227,7 +228,6 @@ def neural_network(X_train, y_train, X_test, y_test, n_experts, cluster_algo, al
     #   print('AUROC (cluster): ', 'NIL')
     # else:
     #   print('AUROC (cluster): ', roc_auc_score(X_train_clusters_sparse, y_pred))
-
 
     ## Train full model
     history_full = full.fit(
