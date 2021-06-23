@@ -4,7 +4,7 @@ Don't Just Divide; Polarize and Conquer!
 Python implementation of 
 - [Don't Just Divide; Polarize and Conquer!](https://arxiv.org/pdf/2102.11872.pdf). *Shivin Srivastava, Siddharth Bhatia, Lingxiao Huang, Jun Heng Lim, Kenji Kawaguchi, Vaibhav Rajan*. (Under Review)
 
-We design a classification algorithm called Clustering Aware Classification (CAC), to find clusters in data that are tailor made to be easily classifiable while being used as training datasets by classifiers for each underlying subpopulation.
+We design a classification algorithm called Clustering Aware Classification (CAC), to find clusters in data that are tailor made to be easily classifiable when used as training datasets by classifiers for each underlying subpopulation. CAC is theoretically motivated, efficient, convergent and provably guaranteed to improve the performance of classifiers using the Logistic Loss functions. The CAC framework improves the performance of 9 different Machine Learning classifiers on 5 standard and 1 large real world dataset.
 
 ![](assets/CAC_full.png)
 
