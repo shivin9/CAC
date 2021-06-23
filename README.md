@@ -1,8 +1,8 @@
-Don't Divide; Polarize and Conquer!
+Don't Just Divide; Polarize and Conquer!
 ======
 
 Python implementation of 
-- [Don't Divide; Polarize and Conquer!](https://arxiv.org/pdf/2102.11872.pdf). *Shivin Srivastava, Siddharth Bhatia, Lingxiao Huang, Jun Heng Lim, Kenji Kawaguchi, Vaibhav Rajan*. (Under Review)
+- [Don't Just Divide; Polarize and Conquer!](https://arxiv.org/pdf/2102.11872.pdf). *Shivin Srivastava, Siddharth Bhatia, Lingxiao Huang, Jun Heng Lim, Kenji Kawaguchi, Vaibhav Rajan*. (Under Review)
 
 We design a classification algorithm called Clustering Aware Classification (CAC), to find clusters in data that are tailor made to be easily classifiable while being used as training datasets by classifiers for each underlying subpopulation.
 
@@ -25,8 +25,8 @@ Run `python3 CAC_experiments.py --init KM --verbose False --classifier LR --data
 
 ## Command line options
   * `--dataset`: The dataset to be used for training. Choices 'adult', 'credit', 'titanic', 'magic', 'cic' (default 'ALL')
-  * `--alpha`: The alpha value to be used. (default: 0.01)
-  * `--classifier`: The base classifier to be used with CAC. (default: LR)
+  * `--alpha`: The alpha value to be used (default: 0.01)
+  * `--classifier`: The base classifier to be used with CAC (default: LR)
   * `--cv`: Test CAC with 5-fold Cross Validation (default: False)
   * `--verbose`: Train base classifier on every intermediate iteration (default: False)
 
