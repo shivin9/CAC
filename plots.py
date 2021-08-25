@@ -114,32 +114,106 @@ def compute_euclidean_distance(point, centroid):
     return np.sqrt(np.sum((point - centroid)**2))
 
 
-def ics(X, y, labels):
+def ics(X, y, k):
+	X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=108)
+	km = KMeans(n_clusters = k)
+	km.fit(X_train)
+	labels = km.labels_
 	k = len(np.unique(labels))
 	vals = np.zeros(k)
+	lgloss = np.zeros(k) 
 	mus = []
-	# print(k)
+	N = len(X)
+	base = LogisticRegression(random_state=0, max_iter=1000).fit(X_train, y_train)
+	base_loss = np.zeros(k)
+	bounds_arr = []
+	cluster_pts = np.zeros(k)
+	local_models = []
+	print("Base Loss: ", logloss(y_train, base.predict_proba(X_train)))
 	for i in range(k):
 		pts_index = np.where(labels == i)[0]
-		n_class_index = np.where(y[pts_index] == 0)[0]
-		p_class_index = np.where(y[pts_index] == 1)[0]
+		model = LogisticRegression(random_state=0, max_iter=1000).fit(X_train[pts_index], y_train[pts_index])
+		local_models.append(model)
+		n_class_index = np.where(y_train[pts_index] == 0)[0]
+		p_class_index = np.where(y_train[pts_index] == 1)[0]
 
-		n_class = X[n_class_index]
-		p_class = X[p_class_index]
+		n_class = X_train[n_class_index]
+		p_class = X_train[p_class_index]
 
 		negative_centers = n_class.mean(axis=0)
 		positive_centers = p_class.mean(axis=0)
 		vals[i] = compute_euclidean_distance(positive_centers, negative_centers)
+		lgloss[i] = logloss(y_train[pts_index], model.predict_proba(X_train[pts_index]))
+		base_loss[i] = logloss(y_train[pts_index], base.predict_proba(X_train[pts_index]))
+		cluster_pts[i] = len(pts_index)
+		bounds_arr.append(bounds(X_train[pts_index], y_train[pts_index]))
+		print("Cluster ", i, " ICS: ", vals[i])
+		print("Cluster ", i, " local loss: ", lgloss[i])
+		print("Cluster ", i, " global loss: ", base_loss[i])
+		print("Cluster ", i, " Local AUC: ", roc_auc_score(y_train[pts_index], model.predict_proba(X_train[pts_index])[:,1]))
+		print("Cluster ", i, " Global AUC: ", roc_auc_score(y_train[pts_index], base.predict_proba(X_train[pts_index])[:,1]))
 
-		mu = np.mean(X[pts_index], axis=0)
+		print("Cluster ", i, " Local ACC: ", accuracy_score(y_train[pts_index], model.predict(X_train[pts_index])))
+		print("Cluster ", i, " Global ACC: ", accuracy_score(y_train[pts_index], base.predict(X_train[pts_index])))
+
+		print("Cluster ", i, " Bounds: ", bounds_arr[-1])
+		print("===============\n")
+		# logloss[i] = log_loss(y_train[pts_index],  np.max(model.predict_proba(X_train[pts_index]), axis=1))
+		# base_loss[i] = log_loss(y_train[pts_index],  np.max(base.predict_proba(X_train[pts_index]), axis=1))
+		mu = np.mean(X_train[pts_index], axis=0)
 		mus.append(mu)
 
-	perimeter = 0
-	if k > 1:
-		for i in range(len(mus)):
-			perimeter += euclidean(mus[i%k], mus[(i+1)%k])
+	# perimeter = 0
+	# if k > 1:
+	# 	for i in range(len(mus)):
+	# 		perimeter += compute_euclidean_distance(mus[i%k], mus[(i+1)%k])
+	print("Total Training Local Loss: ", np.sum(lgloss))
+	print("Total Training Global Loss: ", np.sum(base_loss))
 
-	return sum(vals), perimeter
+	print("##########################")
+
+	print("Base Testing Loss: ", logloss(y_test, base.predict_proba(X_test)))
+	labels = km.predict(X_test)
+	for i in range(k):
+		pts_index = np.where(labels == i)[0]
+
+		n_class_index = np.where(y_test[pts_index] == 0)[0]
+		p_class_index = np.where(y_test[pts_index] == 1)[0]
+
+		n_class = X_test[n_class_index]
+		p_class = X_test[p_class_index]
+		model = local_models[i]
+
+		negative_centers = n_class.mean(axis=0)
+		positive_centers = p_class.mean(axis=0)
+		vals[i] = compute_euclidean_distance(positive_centers, negative_centers)
+		lgloss[i] = logloss(y_test[pts_index], model.predict_proba(X_test[pts_index]))
+		base_loss[i] = logloss(y_test[pts_index], base.predict_proba(X_test[pts_index]))
+		cluster_pts[i] = len(pts_index)
+		bounds_arr.append(bounds(X_test[pts_index], y_test[pts_index]))
+		print("Cluster ", i, " ICS: ", vals[i])
+		print("Cluster ", i, " local loss: ", lgloss[i])
+		print("Cluster ", i, " global loss: ", base_loss[i])
+		print("Cluster ", i, " Bounds: ", bounds_arr[-1])
+		print("Cluster ", i, " Local AUC: ", roc_auc_score(y_test[pts_index], model.predict_proba(X_test[pts_index])[:,1]))
+		print("Cluster ", i, " Global AUC: ", roc_auc_score(y_test[pts_index], base.predict_proba(X_test[pts_index])[:,1]))
+
+		print("Cluster ", i, " Local ACC: ", accuracy_score(y_test[pts_index], model.predict(X_test[pts_index])))
+		print("Cluster ", i, " Global ACC: ", accuracy_score(y_test[pts_index], base.predict(X_test[pts_index])))
+
+		print("===============\n")
+		# logloss[i] = log_loss(y_test[pts_index],  np.max(model.predict_proba(X_test[pts_index]), axis=1))
+		# base_loss[i] = log_loss(y_test[pts_index],  np.max(base.predict_proba(X_test[pts_index]), axis=1))
+		mu = np.mean(X_test[pts_index], axis=0)
+		mus.append(mu)
+
+	# perimeter = 0
+	# if k > 1:
+	# 	for i in range(len(mus)):
+	# 		perimeter += compute_euclidean_distance(mus[i%k], mus[(i+1)%k])
+	print("Total Testing Local Loss: ", np.sum(lgloss))
+	print("Total Testing Global Loss: ", np.sum(base_loss))
+	return None
 
 
 def plot(DATASET, n_clusters=2):

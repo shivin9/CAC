@@ -17,9 +17,9 @@ from keras.utils.vis_utils import plot_model
 from keras import backend
 import matplotlib.pyplot as plt
 
-from CAC import specificity, sensitivity, best_threshold, predict_clusters, predict_clusters_cac,\
-compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new,\
-cac, get_new_accuracy, score
+# from CAC import predict_clusters, predict_clusters_cac,\
+# compute_euclidean_distance, calculate_gamma_old, calculate_gamma_new,\
+# cac, get_new_accuracy, score
 
 
 parser = argparse.ArgumentParser()
@@ -48,9 +48,9 @@ DATASET = args.dataset
 alphas = [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1]
 ############ FOR CIC DATASET ############
 if DATASET == "cic":
-    Xa = pd.read_csv("./data/cic/cic_set_a.csv")
-    Xb = pd.read_csv("./data/cic/cic_set_b.csv")
-    Xc = pd.read_csv("./data/cic/cic_set_c.csv")
+    Xa = pd.read_csv("../../Data/cic/cic_set_a.csv")
+    Xb = pd.read_csv("../../Data/cic/cic_set_b.csv")
+    Xc = pd.read_csv("../../Data/cic/cic_set_c.csv")
 
     ya = Xa['In-hospital_death']
     yb = Xb['In-hospital_death']
@@ -85,10 +85,10 @@ if DATASET == "cic":
     y = pd.concat([y_train, y_test]).to_numpy()
 
 elif DATASET == "titanic":
-    X_train = pd.read_csv("./data/" + DATASET + "/" + "X_train.csv").to_numpy()
-    X_test = pd.read_csv("./data/" + DATASET + "/" + "X_test.csv").to_numpy()
-    y_train = pd.read_csv("./data/" + DATASET + "/" + "y_train.csv").to_numpy()
-    y_test = pd.read_csv("./data/" + DATASET + "/" + "y_test.csv").to_numpy()
+    X_train = pd.read_csv("../../Data/" + DATASET + "/" + "X_train.csv").to_numpy()
+    X_test = pd.read_csv("../../Data/" + DATASET + "/" + "X_test.csv").to_numpy()
+    y_train = pd.read_csv("../../Data/" + DATASET + "/" + "y_train.csv").to_numpy()
+    y_test = pd.read_csv("../../Data/" + DATASET + "/" + "y_test.csv").to_numpy()
 
     X = np.vstack([X_train, X_test])
     y = np.vstack([y_train, y_test])
@@ -96,8 +96,8 @@ elif DATASET == "titanic":
     # y = pd.concat([y_train, y_test]).to_numpy()
 
 else:
-    X = pd.read_csv("./data/" + DATASET + "/" + "X.csv").to_numpy()
-    y = pd.read_csv("./data/" + DATASET + "/" + "y.csv").to_numpy()
+    X = pd.read_csv("../../Data/" + DATASET + "/" + "X.csv").to_numpy()
+    y = pd.read_csv("../../Data/" + DATASET + "/" + "y.csv").to_numpy()
 
 
 def neural_network(X_train, y_train, X_test, y_test, n_experts, cluster_algo, alpha):
@@ -282,7 +282,8 @@ params = {'titanic': [0.2, 2],
   'creditcard': [0.3, 3],
   'adult': [0.8, 2],
   'diabetes': [0.15, 2],
-  'cic': [0.1, 2]
+  'cic': [0.1, 2],
+  'wid_mortality': [0.1, 2]
 }
 
 
@@ -313,12 +314,12 @@ if args.cv == "False":
     cac_scores = np.zeros((n_runs, 2))
 
     for i in range(n_runs):
-        scores_cac = neural_network(X1, y1, X_test, y_test, n_clusters, 'CAC', alpha)
+        # scores_cac = neural_network(X1, y1, X_test, y_test, n_clusters, 'CAC', alpha)
         scores_base = neural_network(X1, y1, X_test, y_test, 1, 'KMeans', alpha)
         scores_km = neural_network(X1, y1, X_test, y_test, n_clusters, 'KMeans', alpha)
                 
-        cac_scores[i, 0] = scores_cac['f1_score']
-        cac_scores[i, 1] = scores_cac['auroc']
+        # cac_scores[i, 0] = scores_cac['f1_score']
+        # cac_scores[i, 1] = scores_cac['auroc']
         km_scores[i, 0] = scores_km['f1_score']
         km_scores[i, 1] = scores_base['auroc']
         base_scores[i, 0] = scores_base['f1_score']
@@ -326,7 +327,7 @@ if args.cv == "False":
 
     print("Base final test performance: ", "F1: ", scores_base['f1_score'], "AUC: ", scores_base['auroc'], alpha)
     print("KM final test performance: ", "F1: ", scores_km['f1_score'], "AUC: ", scores_km['auroc'], alpha)
-    print("CAC final test performance: ", "F1: ", scores_cac['f1_score'], "AUC: ", scores_cac['auroc'], alpha)
+    # print("CAC final test performance: ", "F1: ", scores_cac['f1_score'], "AUC: ", scores_cac['auroc'], alpha)
     test_results.loc[0] = [DATASET, "DMNN", alpha, n_clusters] + list(np.mean(base_scores, axis=0)) + list(np.std(base_scores, axis=0)) + \
             list(np.mean(km_scores, axis=0)) + list(np.std(km_scores, axis=0)) + \
             list(np.mean(cac_scores, axis=0)) + list(np.std(cac_scores, axis=0))
@@ -357,7 +358,7 @@ else:
             X_val = scale.fit_transform(X_val)
 
             scores_base = neural_network(X_train, y_train, X_test, y_test, 1, 'KMeans', alpha)
-            scores_cac = neural_network(X_train, y_train, X_test, y_test, n_clusters, 'CAC', alpha)
+            # scores_cac = neural_network(X_train, y_train, X_test, y_test, n_clusters, 'CAC', alpha)
             scores_km = neural_network(X_train, y_train, X_test, y_test, n_clusters, 'KMeans', alpha)
 
             base_scores[i, 0] = scores_base['f1_score']
@@ -366,8 +367,8 @@ else:
             km_scores[i, 0] = scores_km['f1_score']
             km_scores[i, 1] = scores_km['auroc']
 
-            cac_scores[i, 0] = scores_cac['f1_score']
-            cac_scores[i, 1] = scores_cac['auroc']
+            # cac_scores[i, 0] = scores_cac['f1_score']
+            # cac_scores[i, 1] = scores_cac['auroc']
             i += 1
 
         print("5-Fold Base scores", np.mean(base_scores, axis=0))
@@ -386,13 +387,13 @@ else:
 
         print("Testing on Test data with alpha = ", alpha)
 
-        scores_cac = neural_network(X1, y1, X_test, y_test, n_clusters, 'CAC', alpha)
+        # scores_cac = neural_network(X1, y1, X_test, y_test, n_clusters, 'CAC', alpha)
         scores_base = neural_network(X1, y1, X_test, y_test, 1, 'KMeans', alpha)
         scores_km = neural_network(X1, y1, X_test, y_test, n_clusters, 'KMeans', alpha)
 
         print("Base final test performance: ", "F1: ", scores_base['f1_score'], "AUC: ", scores_base['auroc'], alpha)
         print("KM final test performance: ", "F1: ", scores_km['f1_score'], "AUC: ", scores_km['auroc'], alpha)
-        print("CAC final test performance: ", "F1: ", scores_cac['f1_score'], "AUC: ", scores_cac['auroc'], alpha)
+        # print("CAC final test performance: ", "F1: ", scores_cac['f1_score'], "AUC: ", scores_cac['auroc'], alpha)
         print("\n")
 
         # Can choose whether it to do it w.r.t F1 or AUC

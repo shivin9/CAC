@@ -16,7 +16,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import MultinomialNB
 from matplotlib import pyplot as plt
 from sklearn.model_selection import GridSearchCV
-import seaborn as sns
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 from typing import Tuple
@@ -48,7 +47,7 @@ else:
     VERBOSE = False
 
 datasets = ["adult", "cic", "creditcard", "diabetes",\
-            "magic", "sepsis", "titanic"]
+            "magic", "sepsis", "titanic", "wid_mortality"]
 
 classifiers = ["LR", "SVM", "LDA", "Perceptron", "RF", "KNN", "SGD", "Ridge"]
 # classifiers = ["RF", "KNN"]
@@ -114,6 +113,7 @@ params = {
     "sepsis": [0.015,5],
     "spambase": [1,2],
     "titanic" : [100, 2],
+    "wid_mortality": [0.05, 2]
 }
 
 if args.dataset == "ALL":

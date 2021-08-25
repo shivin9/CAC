@@ -5,6 +5,7 @@ davies_bouldin_score as dbs, normalized_mutual_info_score as nmi, average_precis
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression, Perceptron, SGDClassifier, RidgeClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
@@ -51,7 +52,7 @@ else:
 datasets = ["adult", "cic", "creditcard", "diabetes",\
             "magic", "titanic"]
 
-classifiers = ["LR", "SVM", "LDA", "Perceptron", "RF", "KNN", "SGD", "Ridge"]
+classifiers = ["LR", "SVM", "LDA", "Perceptron", "RF", "KNN", "SGD", "Ridge", "MLP"]
 
 test_results = pd.DataFrame(columns=['Dataset', 'Classifier', 'alpha',\
     'Base_F1_mean', 'Base_AUC_mean', 'Base_F1_std', 'Base_AUC_std',\
@@ -85,6 +86,9 @@ def get_classifier(classifier):
         model.predict_proba = lambda X: np.array([model.decision_function(X), model.decision_function(X)]).transpose()
     elif classifier == "KNN":
         model = KNeighborsClassifier(n_neighbors=5)
+    elif classifier == "MLP":
+        model = MLPClassifier(alpha=1e-3,
+                     hidden_layer_sizes=(16, 8), random_state=108)
     else:
         model = LogisticRegression(class_weight='balanced', max_iter=1000)
     return model
@@ -115,6 +119,7 @@ n_cluster_params = {
     "sepsis": 5,
     "spambase": 2,
     "titanic": 2,
+    "wid_mortality": 2
 }
 
 params = {'LR': {'titanic': 0.8,
@@ -123,56 +128,72 @@ params = {'LR': {'titanic': 0.8,
   'adult': 0.05,
   'diabetes': 2.5,
   'sepsis': 0.005,
-  'cic': 0.05},
+  'cic': 0.05,
+  'wid_mortality': 0.05},
  'SVM': {'titanic': 0.01,
   'magic': 0.02,
   'creditcard': 0.15,
   'adult': 0.15,
   'diabetes': 2.5,
   'sepsis': 0.008,
-  'cic': 0.5},
+  'cic': 0.5,
+  'wid_mortality': 0.5},
  'LDA': {'titanic': 0.08,
   'magic': 0.05,
   'creditcard': 0.02,
   'adult': 0.15,
   'diabetes': 2.5,
   'sepsis': 0.05,
-  'cic': 0.05},
+  'cic': 0.05,
+  'wid_mortality': 0.05},
  'Perceptron': {'titanic': 0.5,
   'magic': 0.01,
   'creditcard': 0.2,
   'adult': 0.15,
   'diabetes': 2.5,
   'sepsis': 0.005,
-  'cic': 0.5},
+  'cic': 0.5,
+  'wid_mortality': 0.5},
  'RF': {'titanic': 0.05,
   'magic': 0.02,
   'creditcard': 0.15,
   'adult': 0.02,
   'diabetes': 2.5,
   'sepsis': 0.01,
-  'cic': 0.5},
+  'cic': 0.5,
+  'wid_mortality': 0.5},
  'KNN': {'titanic': 0.01,
   'magic': 0.01,
   'creditcard': 0.15,
   'adult': 0.02,
   'diabetes': 2.5,
   'sepsis': 0.008,
-  'cic': 0.5},
+  'cic': 0.5,
+  'wid_mortality': 0.5},
  'SGD': {'titanic': 0.3,
   'magic': 0.01,
   'creditcard': 0.08,
   'adult': 0.15,
   'diabetes': 2.5,
   'sepsis': 0.005,
-  'cic': 0.01},
+  'cic': 0.01,
+  'wid_mortality': 0.01},
  'Ridge': {'titanic': 0.01,
   'magic': 0.02,
   'creditcard': 0.15,
   'adult': 0.15,
   'diabetes': 2.5,
   'sepsis': 0.015,
-  'cic': 0.5}}
+  'cic': 0.5,
+  'wid_mortality': 0.5},
+  'MLP': {'titanic': 0.5,
+  'magic': 0.02,
+  'creditcard': 0.2,
+  'adult': 0.15,
+  'diabetes': 2.5,
+  'sepsis': 0.015,
+  'cic': 0.5,
+  'wid_mortality': 0.5}}
 
 if args.dataset == "ALL":
     data = datasets
