@@ -298,6 +298,7 @@ class CAC(object):
             order += list(cluster_point_index)
             # new_y_test.extend(y_test[cluster_point_index])
             cluster_pred_proba = m.predict_proba(X_test[cluster_point_index])[:,1]
+            cluster_pred_proba = m.predict_proba(X_test)[:,1]
             # cluster_preds = 1*(cluster_pred_proba >= thresh)
             # # print(thresh, best_threshold(y_test[cluster_point_index], cluster_pred_proba))
             pred.extend(m.predict(X_test[cluster_point_index]))

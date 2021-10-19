@@ -50,7 +50,7 @@ else:
     VERBOSE = False
 
 datasets = ["adult", "cic", "creditcard", "diabetes",\
-            "magic", "titanic"]
+            "magic", "titanic", "infant", "kidney", "respiratory"]
 
 classifiers = ["LR", "SVM", "LDA", "Perceptron", "RF", "KNN", "SGD", "Ridge", "MLP"]
 
@@ -108,6 +108,9 @@ old_params = {
     "sepsis": [0.015,5],
     "spambase": [1,2],
     "titanic": [100,2],
+    "infant": [0.04, 2],
+    "kidney": [10, 2],
+    "respiratory": [10, 2]
 }
 
 n_cluster_params = {
@@ -119,7 +122,9 @@ n_cluster_params = {
     "sepsis": 5,
     "spambase": 2,
     "titanic": 2,
-    "wid_mortality": 2
+    "wid_mortality": 2,
+    "infant": 2,
+    "kidney": 2
 }
 
 params = {'LR': {'titanic': 0.8,
@@ -129,7 +134,9 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.005,
   'cic': 0.05,
-  'wid_mortality': 0.05},
+  'kidney': 0.05,
+  'wid_mortality': 0.05,
+  'infant': 0.04},
  'SVM': {'titanic': 0.01,
   'magic': 0.02,
   'creditcard': 0.15,
@@ -137,6 +144,7 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.008,
   'cic': 0.5,
+  'kidney': 0.5,
   'wid_mortality': 0.5},
  'LDA': {'titanic': 0.08,
   'magic': 0.05,
@@ -145,6 +153,7 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.05,
   'cic': 0.05,
+  'kidney': 0.05,
   'wid_mortality': 0.05},
  'Perceptron': {'titanic': 0.5,
   'magic': 0.01,
@@ -153,6 +162,7 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.005,
   'cic': 0.5,
+  'kidney': 0.5,
   'wid_mortality': 0.5},
  'RF': {'titanic': 0.05,
   'magic': 0.02,
@@ -161,6 +171,7 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.01,
   'cic': 0.5,
+  'kidney': 0.5,
   'wid_mortality': 0.5},
  'KNN': {'titanic': 0.01,
   'magic': 0.01,
@@ -169,6 +180,7 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.008,
   'cic': 0.5,
+  'kidney': 0.5,
   'wid_mortality': 0.5},
  'SGD': {'titanic': 0.3,
   'magic': 0.01,
@@ -177,6 +189,7 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.005,
   'cic': 0.01,
+  'kidney': 0.01,
   'wid_mortality': 0.01},
  'Ridge': {'titanic': 0.01,
   'magic': 0.02,
@@ -185,6 +198,7 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.015,
   'cic': 0.5,
+  'kidney': 0.5,
   'wid_mortality': 0.5},
   'MLP': {'titanic': 0.5,
   'magic': 0.02,
@@ -193,6 +207,7 @@ params = {'LR': {'titanic': 0.8,
   'diabetes': 2.5,
   'sepsis': 0.015,
   'cic': 0.5,
+  'kidney': 0.5,
   'wid_mortality': 0.5}}
 
 if args.dataset == "ALL":
